@@ -1,0 +1,1537 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GearSwap Versions Compared</title>
+<style>
+/* ─────────────────────────────────────────────────────────────────────────────
+   Tokens. Light is the complete palette on bare :root; the two dark scopes
+   redefine tokens only, so the un-stamped (system) state resolves as a set.
+   Neutrals lean cool, toward the data hues, rather than a flat gray.
+   ────────────────────────────────────────────────────────────────────────── */
+:root {
+  color-scheme: light;
+
+  --page:        #f4f6f6;
+  --sheet:       #fbfcfc;
+  --surface:     #ffffff;
+  --sunken:      #eef1f1;
+
+  --ink:         #0d0f11;
+  --ink-2:       #4c5257;
+  --ink-3:       #6a7177;
+
+  --rule:        #dfe3e3;
+  --rule-soft:   #e9ecec;
+  --grid:        #e4e8e8;
+  --baseline:    #bfc5c6;
+
+  /* Suite identity: one fixed hue per suite, never cycled or reassigned by
+     rank. The three are one validated set, checked all-pairs in both themes. */
+  --v1512:       #2a78d6;
+  --vrahvin:     #1baf7a;
+  --vsel:        #eb6834;
+
+  /* Status: reserved for a frame over its budget, always with a label. */
+  --critical:    #d03b3b;
+
+  /* The frame heatmap's hot end. Cell text stays in ink, so each theme stops
+     its ramp where ink still reads on it (6.0:1 here, 5.3:1 in dark). */
+  --heat-hot:    color-mix(in srgb, var(--ink-2) 64%, var(--surface));
+  /* A figure printed on a suite's full hue: near-black in both themes, the
+     one ink that clears 4.5:1 on all three hues in each. */
+  --on-hue:      #000000;
+
+  --shadow:      0 1px 2px rgba(13,15,17,.05), 0 8px 24px -12px rgba(13,15,17,.18);
+
+  --mono: Consolas, "Cascadia Mono", "SFMono-Regular", ui-monospace, "Liberation Mono", monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --sheet-max: 1220px;
+}
+html { font-size: clamp(15px, 0.5vw + 8.4px, 18px); -webkit-text-size-adjust: 100%; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page:      #0f1113;
+    --sheet:     #17191c;
+    --surface:   #1c1f22;
+    --sunken:    #131518;
+    --ink:       #f1f4f5;
+    --ink-2:     #b4babf;
+    --ink-3:     #939aa0;
+    --rule:      #2b2f33;
+    --rule-soft: #23272a;
+    --grid:      #282c30;
+    --baseline:  #3a3f43;
+    --v1512:     #3987e5;
+    --vrahvin:   #199e70;
+    --vsel:      #d95926;
+    --critical:  #e5605f;
+    --heat-hot:  color-mix(in srgb, var(--ink-2) 45%, var(--surface));
+    --on-hue:    #0b0c0e;
+    --shadow:    0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page:      #0f1113;
+  --sheet:     #17191c;
+  --surface:   #1c1f22;
+  --sunken:    #131518;
+  --ink:       #f1f4f5;
+  --ink-2:     #b4babf;
+  --ink-3:     #939aa0;
+  --rule:      #2b2f33;
+  --rule-soft: #23272a;
+  --grid:      #282c30;
+  --baseline:  #3a3f43;
+  --v1512:     #3987e5;
+  --vrahvin:   #199e70;
+  --vsel:      #d95926;
+  --critical:  #e5605f;
+  --heat-hot:  color-mix(in srgb, var(--ink-2) 45%, var(--surface));
+  --on-hue:    #0b0c0e;
+  --shadow:    0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.6);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 1rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The one side gutter, set here and nowhere else. */
+.stack {
+  display: flex; flex-direction: column; align-items: center;
+  gap: clamp(14px, 2vw, 26px);
+  padding-block: clamp(12px, 2vw, 26px) 64px;
+  padding-inline: max(16px, 1.6vw);
+}
+
+/* A sheet is one page of the report. */
+.sheet {
+  width: 100%;
+  max-width: var(--sheet-max);
+  background: var(--sheet);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  box-shadow: var(--shadow);
+  padding: clamp(18px, 3.2vw, 44px) clamp(14px, 3.6vw, 52px) clamp(22px, 3.4vw, 48px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(22px, 2.6vw, 34px);
+  min-width: 0;
+}
+@media (max-width: 560px) {
+  .sheet { padding: 18px 0 26px; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+  .stack { gap: 8px; }
+}
+
+.sheet-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 6px 16px; flex-wrap: wrap;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 10px;
+  font-family: var(--mono); font-size: .72rem; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink-3);
+}
+
+/* ── Masthead ─────────────────────────────────────────────────────────────── */
+.masthead { display: flex; flex-direction: column; gap: 14px; }
+.eyebrow { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); }
+h1 {
+  font-family: var(--mono);
+  font-size: clamp(1.7rem, 1.2rem + 1.8vw, 2.6rem);
+  font-weight: 700; letter-spacing: -.02em; line-height: 1.1;
+  margin: 0; text-wrap: balance;
+}
+.standfirst { font-size: 1.12rem; line-height: 1.6; color: var(--ink-2); margin: 0; text-wrap: pretty; }
+.byline { font-size: .84rem; color: var(--ink-2); border-top: 1px solid var(--rule-soft); padding-top: 10px; margin: 0; }
+.notice-line { font-size: .87rem; color: var(--ink-2); border-left: 2px solid var(--baseline); padding-left: 14px; margin: 0; }
+
+h2 { font-family: var(--mono); font-size: 1.14rem; font-weight: 700; letter-spacing: -.01em; margin: 0 0 4px; text-wrap: balance; }
+h3 { font-family: var(--mono); font-size: .8rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-2); margin: 0; }
+p { margin: 0 0 .85em; text-wrap: pretty; }
+p:last-child { margin-bottom: 0; }
+.section { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+/* One width for everything in a sheet: prose, lists and captions run the
+   column's full width, as the tables and charts beside them do. */
+strong { font-weight: 650; color: var(--ink); }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.small { font-size: .84rem; color: var(--ink-2); }
+.cause-tag { font-family: var(--mono); font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 -8px; }
+
+/* ── Suite key ────────────────────────────────────────────────────────────── */
+.key { display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: center; font-family: var(--mono); font-size: .8rem; }
+.key-item { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-2); }
+.swatch { width: 11px; height: 11px; border-radius: 2px; flex: none; display: inline-block; }
+.sw-1512 { background: var(--v1512); }
+.sw-rahvin { background: var(--vrahvin); }
+.sw-sel { background: var(--vsel); }
+
+/* ── At a glance: the infographic ─────────────────────────────────────────── */
+.glance { display: flex; flex-direction: column; gap: 18px; }
+.glance-lead { font-size: .95rem; color: var(--ink-2); margin: 0; }
+.suite-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); gap: 12px; }
+.suite-card {
+  background: var(--surface); border: 1px solid var(--rule); border-radius: 3px;
+  padding: 15px 16px 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0;
+}
+.sc-name { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: .74rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+.sc-rank { margin-left: auto; color: var(--ink-3); letter-spacing: .06em; }
+.sc-value { font-family: var(--mono); font-size: clamp(1.9rem, 1.4rem + 1.4vw, 2.5rem); font-weight: 700; letter-spacing: -.03em; line-height: 1.05; }
+.sc-unit { font-size: .9rem; font-weight: 400; color: var(--ink-2); letter-spacing: 0; margin-left: 4px; }
+.sc-pm { font-size: .95rem; font-weight: 400; color: var(--ink-2); letter-spacing: 0; margin-left: 7px; white-space: nowrap; }
+.sc-sub { font-size: .8rem; color: var(--ink-2); line-height: 1.45; }
+.splitbar-track { background: var(--sunken); border-radius: 3px; }
+.splitbar { display: flex; gap: 2px; height: 14px; border-radius: 3px; overflow: hidden; background: var(--surface); min-width: 12px; }
+.splitbar > span { display: block; min-width: 2px; height: 100%; }
+.split-legend { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 4px 8px; align-items: center; font-size: .8rem; color: var(--ink-2); }
+.split-legend .chip { width: 10px; height: 10px; border-radius: 2px; }
+.split-legend .v { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); text-align: right; }
+.sc-drive { display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--rule-soft); padding-top: 9px; font-size: .8rem; line-height: 1.45; color: var(--ink-2); }
+.sc-drive-h { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+.sc-drive b { font-family: var(--mono); font-weight: 650; color: var(--ink); font-variant-numeric: tabular-nums; }
+.sc-foot { display: flex; flex-wrap: wrap; gap: 4px 14px; border-top: 1px solid var(--rule-soft); padding-top: 9px; font-size: .78rem; color: var(--ink-2); }
+.sc-foot b { font-family: var(--mono); font-weight: 650; color: var(--ink); }
+.takeaways { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.takeaways li { position: relative; padding-left: 20px; font-size: .95rem; line-height: 1.55; }
+.takeaways li::before { content: ""; position: absolute; left: 2px; top: .62em; width: 8px; height: 2px; background: var(--ink-3); }
+
+/* ── Stat table (lowest on each measure) ──────────────────────────────────── */
+.winners table { font-family: var(--sans); font-size: .87rem; }
+.winners th, .winners td { text-align: left; white-space: normal; vertical-align: top; }
+.winners .w-cat { font-family: var(--mono); font-size: .73rem; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); }
+.winners .w-val { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.winners .w-best { white-space: nowrap; }
+/* On a phone each row becomes a block: the measure, then the suite and its
+   value on one line, then the reading, so no column is squeezed. */
+@media (max-width: 640px) {
+  .winners table, .winners tbody { display: block; }
+  .winners thead { display: none; }
+  .winners tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 9px 0; border-bottom: 1px solid var(--rule-soft); }
+  .winners tbody tr:last-child { border-bottom: none; }
+  .winners td { border: none; padding: 0; }
+  .winners td.w-cat, .winners td.w-read { grid-column: 1 / -1; }
+  .winners td.w-read { color: var(--ink-2); font-size: .82rem; }
+}
+.sw-inline { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 7px; vertical-align: 0; }
+
+/* ── Figures ──────────────────────────────────────────────────────────────── */
+figure { margin: 0; display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+figcaption { font-size: .83rem; line-height: 1.5; color: var(--ink-2); }
+figcaption b { font-family: var(--mono); font-weight: 650; color: var(--ink); }
+.chart-frame { background: var(--surface); border: 1px solid var(--rule); border-radius: 3px; padding: 16px 16px 10px; overflow-x: auto; min-width: 0; }
+.chart-frame svg { display: block; width: 100%; height: auto; }
+.chart-frame .fit { width: 100%; min-width: 0; }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(330px, 100%), 1fr)); gap: 20px; }
+.flow-note { font-size: .9rem; line-height: 1.55; color: var(--ink-2); margin: 0; padding: 14px 4px; }
+.flow-zero { font-size: .83rem; line-height: 1.5; color: var(--ink-2); margin: 0; }
+@media (max-width: 560px) { .chart-frame { padding: 12px 10px 8px; } }
+
+/* SVG ink. Sizes are in the chart's own units. */
+.ax-line { stroke: var(--baseline); stroke-width: 1; }
+.gridline { stroke: var(--grid); stroke-width: 1; }
+.tick-text { font-family: var(--mono); font-size: 9.5px; fill: var(--ink-3); font-variant-numeric: tabular-nums; }
+.cat-text { font-family: var(--mono); font-size: 10.5px; fill: var(--ink-2); }
+.cat-text.strong { fill: var(--ink); font-weight: 700; }
+.val-text { font-family: var(--mono); font-size: 9.5px; fill: var(--ink-2); font-variant-numeric: tabular-nums; }
+.seg-text { font-family: var(--mono); font-size: 9.5px; font-variant-numeric: tabular-nums; }
+.fig-title { font-family: var(--mono); font-size: 12.5px; font-weight: 700; fill: var(--ink); }
+.legend-text { font-family: var(--mono); font-size: 10.5px; fill: var(--ink-2); }
+.axis-label { font-family: var(--sans); font-size: 11px; font-style: italic; fill: var(--ink-3); }
+.group-text { font-family: var(--mono); font-size: 10px; fill: var(--ink-3); letter-spacing: .1em; text-transform: uppercase; }
+/* Units are not uppercased: text-transform turns the micro sign into a capital
+   Mu, so a microsecond unit would read as a millisecond one. */
+.unit-text { font-family: var(--mono); font-size: 10px; fill: var(--ink-3); letter-spacing: .04em; }
+.bar, .mark { transition: opacity .12s ease; }
+.bar:hover, .bar:focus-visible { opacity: .78; }
+.mark:hover, .mark:focus-visible { opacity: .75; }
+.bar:focus-visible, .mark:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.series-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.range-line { stroke: var(--baseline); stroke-width: 2; stroke-linecap: round; }
+.window-bar { fill: var(--sunken); stroke: var(--baseline); stroke-width: 1; }
+.late { fill: var(--surface); stroke-width: 2; }
+.note-text { font-family: var(--sans); font-size: 11px; font-style: italic; fill: var(--ink-3); }
+
+/* ── Tooltip ──────────────────────────────────────────────────────────────── */
+#tip {
+  position: fixed; z-index: 40; pointer-events: none; opacity: 0;
+  transition: opacity .1s ease;
+  background: var(--ink); color: var(--page);
+  font-family: var(--mono); font-size: .77rem; line-height: 1.45;
+  padding: 6px 9px; border-radius: 3px; max-width: 280px;
+  box-shadow: 0 4px 16px -4px rgba(0,0,0,.4);
+}
+#tip.on { opacity: 1; }
+#tip .tip-v { font-weight: 700; }
+#tip .tip-k { opacity: .72; }
+
+/* ── Data tables ──────────────────────────────────────────────────────────── */
+details.numbers { border-top: 1px solid var(--rule-soft); padding-top: 7px; }
+details.numbers > summary {
+  cursor: pointer; font-family: var(--mono); font-size: .7rem;
+  letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); list-style: none;
+}
+details.numbers > summary::-webkit-details-marker { display: none; }
+details.numbers > summary::before { content: "▸ "; }
+details[open].numbers > summary::before { content: "▾ "; }
+details.numbers > summary:hover { color: var(--ink); }
+details.numbers > summary:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.table-wrap { overflow-x: auto; margin-top: 9px; max-width: 100%; }
+table { border-collapse: collapse; width: 100%; font-family: var(--mono); font-size: .77rem; font-variant-numeric: tabular-nums; }
+caption { text-align: left; font-size: .73rem; color: var(--ink-3); padding-bottom: 6px; letter-spacing: .04em; }
+th, td { text-align: right; padding: 4px 9px; border-bottom: 1px solid var(--rule-soft); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th { color: var(--ink-3); font-weight: 700; border-bottom: 1px solid var(--rule); }
+tbody tr:last-child td, tbody tr:last-child th { border-bottom: none; }
+tfoot td { font-weight: 700; border-top: 1px solid var(--rule); border-bottom: none; }
+tbody th { font-weight: 400; }
+
+/* ── Method list ──────────────────────────────────────────────────────────── */
+.method { display: grid; gap: 0; border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; margin: 0; }
+.method-row { display: grid; grid-template-columns: minmax(120px, 172px) 1fr; border-bottom: 1px solid var(--rule-soft); background: var(--surface); }
+.method-row:last-child { border-bottom: none; }
+.method-row dt { font-family: var(--mono); font-size: .73rem; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-2); padding: 13px 14px; background: var(--sunken); border-right: 1px solid var(--rule-soft); }
+.method-row dd { margin: 0; padding: 13px 15px; font-size: .9rem; line-height: 1.55; color: var(--ink-2); min-width: 0; }
+@media (max-width: 620px) {
+  .method-row { grid-template-columns: 1fr; }
+  .method-row dt { border-right: none; border-bottom: 1px solid var(--rule-soft); }
+}
+
+.caveat { font-size: .87rem; line-height: 1.6; color: var(--ink-2); border-left: 2px solid var(--baseline); padding-left: 15px; display: flex; flex-direction: column; gap: .7em; }
+.caveat b { color: var(--ink); }
+.caveat p { margin: 0; }
+.caveat .gaps { display: flex; flex-direction: column; gap: .5em; }
+.caveat ul { margin: 0; padding-left: 1.1em; display: grid; gap: 7px; }
+.caveat li strong { color: var(--ink); }
+.changes { margin: 0; padding-left: 1.2em; display: grid; gap: 8px; font-size: .92rem; color: var(--ink-2); }
+.changes li::marker { color: var(--ink-3); font-family: var(--mono); }
+.residuals { display: grid; gap: 10px; border: 1px solid var(--rule); border-radius: 3px; background: var(--surface); padding: 14px 16px; }
+.residuals ul { margin: 0; padding-left: 1.1em; display: grid; gap: 7px; font-size: .88rem; color: var(--ink-2); }
+
+/* ── Feature chart: one disc per suite and feature, full, half or empty ──── */
+.disc { display: inline-block; width: 15px; height: 15px; border-radius: 50%; flex: none; }
+.matrix-legend .disc { --c: var(--ink-2); }
+.disc.full { background: var(--c); }
+.disc.part { background: linear-gradient(90deg, var(--c) 50%, transparent 50%); border: 2px solid var(--c); }
+.disc.none { background: transparent; border: 2px solid var(--baseline); }
+.matrix-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; font-family: var(--mono); font-size: .77rem; color: var(--ink-2); }
+.matrix-legend > span { display: inline-flex; align-items: center; gap: 7px; }
+.matrix-legend .matrix-hint { font-family: var(--sans); font-size: .83rem; color: var(--ink-3); }
+.features table.mx { font-family: var(--sans); font-size: .83rem; table-layout: fixed; }
+.features table.mx th, .features table.mx td { text-align: left; white-space: normal; vertical-align: top; padding: 9px 10px; }
+.features table.mx thead th { font-family: var(--mono); font-size: .77rem; white-space: nowrap; }
+.features table.mx thead th:first-child { width: 17%; }
+.features table.mx tbody th { font-family: var(--mono); font-size: .7rem; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); font-weight: 700; padding-top: 11px; }
+.mcell { display: flex; align-items: flex-start; gap: 9px; }
+.mcell .tag { font-family: var(--mono); font-size: .73rem; line-height: 1.4; color: var(--ink-2); padding-top: 1px; }
+@media (max-width: 720px) {
+  .features table.mx, .features table.mx tbody, .features table.mx tr, .features table.mx th, .features table.mx td { display: block; width: auto; }
+  .features table.mx thead { display: none; }
+  .features table.mx tbody tr { border-bottom: 1px solid var(--rule); padding: 8px 0 10px; }
+  .features table.mx tbody tr:last-child { border-bottom: none; }
+  .features table.mx tbody th { border: none; padding: 4px 0 6px; }
+  .features table.mx td { border: none; padding: 3px 0; display: flex; align-items: flex-start; gap: 10px; }
+  .features table.mx td::before { content: attr(data-suite); flex: 0 0 8.5em; font-family: var(--mono); font-size: .7rem; letter-spacing: .04em; color: var(--ink-3); padding-top: 2px; }
+}
+.notes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 14px; }
+.note { border: 1px solid var(--rule); border-radius: 3px; background: var(--surface); padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.note .what { font-size: .87rem; color: var(--ink-2); margin: 0 0 3px; }
+.note-row { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 0 9px; font-size: .83rem; line-height: 1.5; color: var(--ink-2); align-items: start; }
+.note-row .sw { width: 10px; height: 10px; border-radius: 2px; margin-top: 4px; }
+.note-row b { color: var(--ink); font-weight: 650; }
+
+/* ── Heatmap: one HTML table a state, one cell per client and suite ───────── */
+.heat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(330px, 100%), 1fr)); gap: 14px 18px; }
+.heat table { font-family: var(--mono); font-size: .77rem; table-layout: fixed; }
+.heat caption { font-family: var(--mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+.heat th, .heat td { text-align: center; white-space: nowrap; padding: 0; border: 1px solid var(--rule-soft); }
+.heat th:first-child, .heat td:first-child { text-align: left; padding: 5px 8px; font-weight: 700; width: 36%; white-space: normal; }
+.heat thead th { padding: 6px 4px; color: var(--ink-3); font-weight: 700; line-height: 1.3; white-space: normal; }
+/* On a phone the client column gives up width so a suite's name fits its
+   column whole rather than breaking inside the word. */
+@media (max-width: 560px) {
+  .heat th:first-child, .heat td:first-child { width: 31%; padding-inline: 6px; }
+  .heat thead th { font-size: .7rem; padding-inline: 2px; }
+}
+.heat .rname { display: block; color: var(--ink); }
+.heat .rfps { display: block; font-weight: 400; font-size: .66rem; color: var(--ink-3); }
+.heat td .cell { display: flex; flex-direction: column; gap: 1px; padding: 8px 4px; }
+.heat td .pct { font-weight: 700; font-variant-numeric: tabular-nums; }
+.heat td .us { font-size: .67rem; font-variant-numeric: tabular-nums; }
+.heat td .over { font-size: .62rem; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; }
+.heat td.is-over { box-shadow: inset 0 0 0 2px var(--critical); }
+.heat-scale { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-family: var(--mono); font-size: .7rem; color: var(--ink-3); margin-top: 9px; }
+.heat-scale .ramp { flex: 0 0 140px; height: 9px; border-radius: 2px; border: 1px solid var(--rule); background: linear-gradient(90deg, var(--surface), var(--heat-hot)); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+@media print {
+  body { background: #fff; }
+  .sheet { box-shadow: none; break-after: page; page-break-after: always; }
+  .sheet:last-child { break-after: auto; page-break-after: auto; }
+}
+
+/* ── The comparison's own parts ───────────────────────────────────────────── */
+/* A card holds three versions, so it needs a little more width than the
+   report's one-figure card. */
+.suite-cards.vs { grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); }
+.vrow { display: flex; flex-direction: column; gap: 5px; }
+.vrow-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; }
+.vrow-name { flex: 1 1 100%; font-family: var(--mono); font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.vrow-value { font-family: var(--mono); font-size: clamp(1.25rem, 1.05rem + .6vw, 1.5rem); font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
+.vrow-delta { font-size: .78rem; color: var(--ink-2); }
+.vrow-delta b { font-family: var(--mono); font-weight: 650; color: var(--ink); }
+.share { font-size: .76rem; }
+.share th, .share td { padding: 3px 5px; }
+.share thead th { white-space: normal; line-height: 1.25; vertical-align: bottom; font-size: .68rem; }
+.share tbody th { white-space: normal; font-family: var(--sans); color: var(--ink-2); }
+.share .chip { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.card-note { font-size: .84rem; line-height: 1.5; color: var(--ink-2); margin: 0; }
+.card-note b { color: var(--ink); }
+.versions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(330px, 100%), 1fr)); gap: 14px 20px; }
+.versions-grid h3 { margin-bottom: 6px; }
+.versions { margin: 0; padding-left: 1.2em; display: grid; gap: 8px; font-size: .95rem; color: var(--ink-2); }
+.versions li strong { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<div id="tip" role="status" aria-live="polite"></div>
+
+<div class="stack">
+
+<!-- ══════════════════════════════ SHEET 1 ══════════════════════════════ -->
+<section class="sheet">
+  <div class="sheet-head"><span>GearSwap suites · three GearSwap versions compared</span><span>Sheet 1 / 3 · At a glance</span></div>
+
+  <div class="masthead">
+    <div class="eyebrow">Mirdain 1.5.12 · Rahvin GS 2.1 · Selindrile · under GearSwap 0.940 (previous), 0.940 (new) and GearswapRevised · six boxes · 18-player alliance</div>
+    <h1>Three suites under three GearSwap versions</h1>
+    <p class="standfirst">Six characters fight one Dynamis Divergence wave inside an 18-player alliance: a Bard, a Geomancer, a White Mage, a Corsair, a Blue Mage and a Warrior. Three GearSwap suites run that fight on the same gear, as in the three-suite report. That report found GearSwap's own work to be most of every suite's cost. This document takes the report's headline sections and sets the three suites side by side under three versions of GearSwap. The suites' own code is the same measurement under every version. Only GearSwap's own work changes, priced from a counting session Rahvin played in the game on each version.</p>
+    <ul class="versions" id="versions"></ul>
+    <p class="byline">Written by Rahvin, the developer of Rahvin GS. The suite began as a fork of Mirdain's include and took its own name when it was split into components. Of the three engines here, only Rahvin GS is the author's own. Mirdain 1.5.12 is the original include as Mirdain shipped it. Selindrile is a third author's suite, measured at its upstream commit of 2026-07-23. <strong>Rahvin GS 2.1 is measured as it ships</strong>, at its release commit (GearSwap <span class="num">0f8350e</span>, 2026-09-24), with its engine, gear library and job files together. Every feature claim was read from each suite's source rather than its documentation. Every charted figure comes from the measurement run unedited. <strong>GearswapRevised is the author's own as well</strong>: his fork of GearSwap 0.940, meant for players to use in place of GearSwap's Live and Dev versions.</p>
+    <p class="notice-line" id="notice"></p>
+  </div>
+
+  <div class="key" aria-hidden="true">
+    <span class="key-item"><span class="swatch sw-1512"></span>Mirdain 1.5.12</span>
+    <span class="key-item"><span class="swatch sw-rahvin"></span>Rahvin GS 2.1</span>
+    <span class="key-item"><span class="swatch sw-sel"></span>Selindrile</span>
+  </div>
+
+  <div class="section glance">
+    <h2>At a glance</h2>
+    <p class="glance-lead" id="glance-lead"></p>
+    <div class="suite-cards vs" id="glance-cards"></div>
+    <p class="card-note" id="glance-writers"></p>
+    <ul class="takeaways" id="glance-takeaways"></ul>
+  </div>
+</section>
+
+<!-- ══════════════════════════════ SHEET 2 ══════════════════════════════ -->
+<section class="sheet">
+  <div class="sheet-head"><span>GearSwap suites · three GearSwap versions compared</span><span>Sheet 2 / 3 · GearSwap's refresh and walk</span></div>
+
+  <div class="section">
+    <p class="cause-tag">Cause 1</p>
+    <h2>GearSwap's refresh</h2>
+    <p>Before GearSwap hands an event to a job file, it refreshes its picture of the player, the world and the party.<span id="refresh-versions"></span></p>
+    <p>A refresh comes in two sizes. A <strong>full</strong> one also rebuilds the character's own record. GearSwap runs a full refresh before each action the player types, again when the action completes, and for every buff packet that changes a buff, every status change and every gs c command. An event a suite registers through GearSwap's wrapped registration gets a <strong>short</strong> refresh if the last refresh was 0.05 to 0.5 seconds before, a full one if it was longer, and none inside 0.05 seconds. <span id="refresh-sizes"></span></p>
+    <p id="refresh-price"></p>
+    <p><strong>Why the suites differ.</strong> <span id="refresh-why"></span></p>
+    <figure>
+      <div class="chart-frame"><div class="fit" id="c-refresh-priced"></div></div>
+      <figcaption id="refresh-priced-cap"></figcaption>
+    </figure>
+    <figure>
+      <div class="chart-frame"><div class="fit" id="c-refresh"></div></div>
+      <figcaption>GearSwap refreshes a minute across the six clients, moderate state, the same under every version. A skipped call is a wrapped event inside 0.05 seconds of the last refresh: it costs no refresh, but the walk below still runs.</figcaption>
+      <details class="numbers"><summary>Numbers</summary><div class="table-wrap" id="t-refresh"></div><div class="table-wrap" id="t-refresh-prices"></div></details>
+    </figure>
+  </div>
+
+  <div class="section">
+    <p class="cause-tag">Cause 2</p>
+    <h2>GearSwap's walk around every event</h2>
+    <p>Around every event it runs for a suite, GearSwap reads the gear the character wears and then matches what the handler proposed against what the character carries in the equippable bags: the inventory and eight wardrobes, 720 rows in all. Both 0.940 versions walk every row, even when the handler proposed nothing, and the walk is the same code in both. <span id="event-drift"></span> GearswapRevised keeps an index of those bags by item name, so an event visits only the rows holding the items its handler named, in the order the full walk would reach them.</p>
+    <p id="event-price"></p>
+    <p><strong>Why the suites differ.</strong> <span id="event-why"></span></p>
+    <figure>
+      <div class="chart-frame"><div class="fit" id="c-events-priced"></div></div>
+      <figcaption id="events-priced-cap"></figcaption>
+    </figure>
+    <figure>
+      <div class="chart-frame"><div class="fit" id="c-events"></div></div>
+      <figcaption id="events-cap"></figcaption>
+      <details class="numbers"><summary>Numbers</summary><div class="table-wrap" id="t-events"></div><div class="table-wrap" id="t-event-prices"></div></details>
+    </figure>
+  </div>
+</section>
+
+<!-- ══════════════════════════════ SHEET 3 ══════════════════════════════ -->
+<section class="sheet">
+  <div class="sheet-head"><span>GearSwap suites · three GearSwap versions compared</span><span>Sheet 3 / 3 · Per character, memory, method, caveats</span></div>
+
+  <div class="section">
+    <h2>Per character</h2>
+    <p id="job-text"></p>
+    <div class="versions-grid" id="c-jobs"></div>
+    <figure>
+      <figcaption>Engine CPU per client per second of fighting, moderate state, split by cause, one chart per GearSwap version on one scale. Each group is one character; each bar one suite, in the same order in every chart.</figcaption>
+      <details class="numbers"><summary>Numbers</summary><div class="table-wrap" id="t-jobs"></div></details>
+    </figure>
+  </div>
+
+  <div class="section">
+    <h2>Memory held as boxes are added</h2>
+    <p id="mem-text"></p>
+    <p><strong>What GearswapRevised keeps besides.</strong> <span id="mem-d"></span></p>
+    <figure>
+      <div class="chart-frame"><div id="c-memline"></div></div>
+      <figcaption>What each suite keeps in memory as boxes are added, moderate state, the same under every version of GearSwap: the first box's figure, then the per-box figure for each box after it. GearSwap's own tables are not in it, so GearswapRevised's additions are in the table instead.</figcaption>
+      <details class="numbers"><summary>Numbers</summary><div class="table-wrap" id="t-mem"></div><div class="table-wrap" id="t-dmem"></div></details>
+    </figure>
+  </div>
+
+  <div class="section">
+    <h2>How this was measured</h2>
+    <dl class="method">
+      <div class="method-row"><dt>The versions</dt><dd id="m-versions"></dd></div>
+      <div class="method-row"><dt>GearSwap's work</dt><dd id="m-gearswap"></dd></div>
+      <div class="method-row"><dt>What runs</dt><dd>Each suite's complete shipped code, compiled into a per-client sandbox in GearSwap's own load order. Each of the two Mirdain-lineage trees runs with the job files and gear library it carries. Selindrile runs its full library chain with its bundled organizer include. Registrations, schedules and settings run as shipped. Nothing is extracted or paraphrased.</dd></div>
+      <div class="method-row"><dt>States</dt><dd><b>Lean</b> is every chat channel off, Hoxne off and Treasure Hunter None, every lock at its load default. For Selindrile this is the parity tier, with its Bard's weapons held through songs as the 1.5.12 source holds them. <b>Moderate</b> is each suite's own first-load defaults plus the modes this party plays: Hoxne on the Bard where the engine has the mode (Rahvin GS 2.1), Treasure Hunter Tag on the Corsair on all three, and the Bard's weapon lock on Songs where the engine has that mode (Rahvin GS 2.1), as Rahvin plays it. For Selindrile this is the practical tier, its Bard's weapon set freed for songs.</dd></div>
+      <div class="method-row"><dt>Gear</dt><dd>The same six loadouts everywhere, but each lineage engine brings its own copy of them. Rahvin GS 2.1 runs the job files and gear library it carries. 1.5.12 runs those files as a later Mirdain-named release shipped them, the set this comparison has loaded under it since its first run; it cannot load 2.1's, which call engine hooks it does not have. So the pair differs by a whole tree, not by an engine file alone. Selindrile runs generated ports of the same six loadouts, each wearing its source's weapons, with every set checked against the original. Selindrile's upstream files stay pinned byte for byte.</dd></div>
+      <div class="method-row"><dt>Timing</dt><dd>Unit costs come from continuous hot loops of 250&nbsp;ms or more, on the real clock, outside the sandbox. Inside it, time is virtual and driver-controlled, so busy windows, throttles and item cooldowns all run on their true cadence. The measurement ran pinned to one processor at high priority on an otherwise quiet machine.</dd></div>
+    </dl>
+  </div>
+
+  <div class="section">
+    <h2>Where these numbers can mislead</h2>
+    <div class="caveat">
+      <p><b>The versions compare only past the drift between sessions.</b> <span id="cav-drift"></span></p>
+      <p><b>One part of GearSwap is priced in no version.</b> <span id="cav-writers"></span></p>
+      <p><b>GearSwap's prices are Rahvin's characters'.</b> <span id="cav-bags"></span> The rates were recorded at a busy camp, not in a Divergence wave, and the alliance's other twelve members are added to each refresh by inference.</p>
+      <p><b>The suites' own code weighs more under GearswapRevised.</b> <span id="cav-own"></span></p>
+      <p><b>What the plus or minus covers.</b> <span id="cav-error"></span></p>
+      <p><b>The two lineage columns are whole trees of different ages, not engine files.</b> Rahvin GS 2.1 is measured as it ships, with engine, gear library and job files together. 1.5.12 runs the job files as a later Mirdain-named release shipped them. So the gap between those two columns is what a player moving from the original include to this suite would see, and it is not purely the engine. No arrangement isolates the engine and stays realistic, so the realistic one is reported.</p>
+      <p><b>The suites draw the automation boundary in different places.</b> Selindrile bundles play automation into the measured suite. The Mirdain-lineage engines are designed as the gear-swap layer of a setup where sequencing, if automated at all, runs outside GearSwap, where no column here can see it. A moderate-state gap between them is partly a boundary difference. The lean and parity columns are less affected, because optional automation is off there, with one stated exception: Rahvin GS's received-spell system keeps its shipped default, so its lean column carries a subsystem 1.5.12 does not have.</p>
+      <p><b>Selindrile is measured at its pinned upstream commit of 2026-07-23</b>, on ported gear, with its shipped defaults. Claims about Selindrile are claims about that version on this scenario and nothing broader. Selindrile's measured columns exist because its library genuinely boots, casts, equips and tracks here, verified end to end before any number was recorded.</p>
+      <p><b>What this document leaves out.</b> <span id="cav-out"></span></p>
+    </div>
+  </div>
+
+  <div class="sheet-head" style="border-bottom:none; border-top:1px solid var(--rule); padding-top:12px; padding-bottom:0;">
+    <span>Measured 2026-09-28/29, timelines 2026-10-01 · GearSwap priced from counting sessions of 2026-09-26 and 2026-09-30 · PUC Lua 5.1.5 · Mirdain 1.5.12 &amp; Rahvin GS 2.1 × moderate/lean; Selindrile × practical/parity</span>
+  </div>
+</section>
+
+</div>
+
+<script>
+"use strict";
+
+const V = ["1.5.12", "2.1+0f8350e", "sel"];
+const M = "1.5.12", R = "2.1+0f8350e", S = "sel";
+const COLOR = { "1.5.12": "var(--v1512)", "2.1+0f8350e": "var(--vrahvin)", "sel": "var(--vsel)" };
+const LEGEND = { "1.5.12": "Mirdain 1.5.12", "2.1+0f8350e": "Rahvin GS 2.1", "sel": "Selindrile" };
+const SHORT = { "1.5.12": "1.5.12", "2.1+0f8350e": "2.1", "sel": "Selindrile" };
+const CFGS = ["moderate", "lean"];
+const CFGLABEL = { moderate: "Moderate", lean: "Lean" };
+const JOBS = ["BRD", "GEO", "WHM", "COR", "BLU", "WAR"];
+const JOBNAME = { BRD: "Bard", GEO: "Geomancer", WHM: "White Mage", COR: "Corsair", BLU: "Blue Mage", WAR: "Warrior" };
+
+function fmt(v, dp) { return v.toFixed(dp == null ? 1 : dp); }
+function fmt1(v) { return fmt(v, 1); }
+function cell(v, dp) { return v == null ? "—" : fmt(v, dp); }
+function kfmt(v) { return Math.round(v).toLocaleString("en-US"); }
+function ms(us) { return fmt(us / 1000, 1); }
+function usf(v) { return v >= 100 ? kfmt(v) : fmt(v, 1); }
+function perMin(v) { return v >= 100 ? kfmt(v) : fmt(v, 1); }
+function mb(kb) { return fmt(kb / 1024, 1); }
+function pc(x) {
+  if (x < 1) return fmt(x, 2) + "%";
+  if (x < 10 || (x >= 99 && x < 100)) return fmt(x, 1) + "%";
+  return fmt(x, 0) + "%";
+}
+/* The smallest share at or above x, to one decimal: a bound that stays true. */
+function pcCeil(x) { return fmt(Math.ceil(x * 10) / 10, 1) + "%"; }
+function times(a, b) { return fmt(a / b, 1); }
+/* A rate a second in words, near a round figure, else the figure. */
+function rateWords(r) {
+  if (r >= 0.85 && r < 1.2) return "about once a second";
+  if (r >= 1.8 && r < 2.25) return "about twice a second";
+  return "about " + fmt(r, 1) + " a second";
+}
+function sum(arr) { return arr.reduce((s, v) => s + v, 0); }
+function argmin(keys, f) { return keys.reduce((a, k) => f(k) < f(a) ? k : a, keys[0]); }
+function argmax(keys, f) { return keys.reduce((a, k) => f(k) > f(a) ? k : a, keys[0]); }
+function byLargest(keys, f) { return keys.slice().sort((a, b) => f(b) - f(a)); }
+function list(items) {
+  if (items.length < 2) return items.join("");
+  return items.slice(0, -1).join(", ") + " and " + items[items.length - 1];
+}
+const ORD = ["", "first", "second", "third", "fourth", "fifth", "sixth"];
+
+/* A paragraph built from text and bold runs, never from markup strings. */
+function put(id, ...parts) {
+  const n = document.getElementById(id);
+  if (!n) return;
+  n.textContent = "";
+  parts.flat().forEach(p => {
+    if (p == null) return;
+    if (typeof p === "string") n.appendChild(document.createTextNode(p));
+    else { const b = document.createElement("strong"); b.textContent = p.b; n.appendChild(b); }
+  });
+}
+function B(text) { return { b: text }; }
+
+const CAUSES = ["refresh", "event", "crossings", "own"];
+const CAUSE_LABEL = {
+  refresh: "GearSwap's refresh", event: "GearSwap's per-event walk",
+  crossings: "Windower crossings", own: "The suite's own code",
+};
+
+function pm(se, f, floor) {
+  if (se == null) return "";
+  const t = f(se);
+  return Number(String(t).replace(/,/g, "")) === 0 ? " ± <" + floor : " ± " + t;
+}
+
+function causeFill(base, cause) {
+  if (cause === "refresh") return base;
+  if (cause === "event") return `color-mix(in srgb, ${base} 52%, var(--surface))`;
+  if (cause === "crossings") return `color-mix(in srgb, ${base} 24%, var(--surface))`;
+  return `color-mix(in srgb, ${base} 45%, var(--ink))`;
+}
+/* The ink for a figure drawn inside a part wearing that shade: near-black on
+   the full hue in both themes, ink on the surface tints, and surface on the
+   deep shade, which is dark in light mode and pale in dark mode. */
+function inkOn(cause) {
+  if (cause === "refresh") return "var(--on-hue)";
+  if (cause === "own") return "var(--surface)";
+  return "var(--ink)";
+}
+
+const tip = document.getElementById("tip");
+function showTip(evt, value, label) {
+  tip.textContent = "";
+  const v = document.createElement("div"); v.className = "tip-v"; v.textContent = value;
+  const k = document.createElement("div"); k.className = "tip-k"; k.textContent = label;
+  tip.append(v, k);
+  tip.classList.add("on");
+  moveTip(evt);
+}
+function moveTip(evt) {
+  const pad = 14;
+  let x = (evt.clientX ?? 0) + pad, y = (evt.clientY ?? 0) + pad;
+  const r = tip.getBoundingClientRect();
+  if (x + r.width > window.innerWidth - 8) x = evt.clientX - r.width - pad;
+  if (y + r.height > window.innerHeight - 8) y = evt.clientY - r.height - pad;
+  tip.style.left = Math.max(8, x) + "px";
+  tip.style.top = Math.max(8, y) + "px";
+}
+function hideTip() { tip.classList.remove("on"); }
+/* Hover and keyboard on a mark. Every value is also in a table, so the
+   tooltip enhances and never gates. */
+function interactive(node, value, label) {
+  node.setAttribute("tabindex", "0");
+  node.setAttribute("role", "img");
+  node.setAttribute("aria-label", label + ": " + value);
+  node.addEventListener("mouseenter", e => showTip(e, value, label));
+  node.addEventListener("mousemove", moveTip);
+  node.addEventListener("mouseleave", hideTip);
+  node.addEventListener("focus", () => {
+    const r = node.getBoundingClientRect();
+    showTip({ clientX: r.left + r.width / 2, clientY: r.top }, value, label);
+  });
+  node.addEventListener("blur", hideTip);
+}
+
+/* ─── SVG helpers ─────────────────────────────────────────────────────────── */
+const NS = "http://www.w3.org/2000/svg";
+function el(name, attrs, text) {
+  const n = document.createElementNS(NS, name);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (text != null) n.textContent = text;
+  return n;
+}
+function el2(n) { return document.createElement(n); }
+function niceMax(v) {
+  if (v <= 0) return 1;
+  const mag = Math.pow(10, Math.floor(Math.log10(v)));
+  for (const m of [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (v <= mag * m) return mag * m;
+  return mag * 10;
+}
+const CHAR_W = 6.1;   /* the mono face's advance at 10.5px, for layout */
+
+/* Charts drawn to their container's width, redrawn when it changes. A chart's
+   units scale with the page's root size, so its labels grow with the prose on
+   a wide screen (the root is 15px on a phone and up to 18px on a desktop). */
+const FITTED = [];
+function chartUnits(host) {
+  const root = parseFloat(getComputedStyle(document.documentElement).fontSize) || 15;
+  const scale = Math.max(1, root / 15);
+  return Math.max(300, (host.clientWidth || 640) / scale);
+}
+function fitted(host, draw) {
+  const w = chartUnits(host);
+  FITTED.push({ host: host, draw: draw, w: w });
+  draw(host, w);
+}
+let refitTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(refitTimer);
+  refitTimer = setTimeout(() => {
+    FITTED.forEach(f => {
+      const w = chartUnits(f.host);
+      if (Math.abs(w - f.w) < 8) return;
+      f.w = w; f.host.textContent = ""; f.draw(f.host, w);
+    });
+  }, 150);
+});
+
+/* ─── Chart furniture every chart shares: the title, wrapped to the width;
+   which way is better; a legend that wraps. The plot begins below them. ── */
+const TITLE_W = 7.7;   /* the title face's advance at 12.5px bold, for layout */
+function wrapWords(text, maxChars) {
+  const lines = [];
+  let cur = "";
+  text.split(" ").forEach(w => {
+    const next = cur ? cur + " " + w : w;
+    if (next.length > maxChars && cur) { lines.push(cur); cur = w; } else cur = next;
+  });
+  if (cur) lines.push(cur);
+  return lines;
+}
+function diamond(cx, cy, r) { return `M${cx},${cy - r} L${cx + r},${cy} L${cx},${cy + r} L${cx - r},${cy} Z`; }
+/* A legend key that mirrors its mark: a box for bars, a dot, a diamond, a
+   stroke for lines, a ring for a hollow mark. */
+function keyMark(it, x, cy) {
+  /* A part drawn in each suite's own shade gets three chips, one per suite in
+     the page's order, so the key shows the very shades the bars wear. */
+  if (it.shades) {
+    const g = el("g", {});
+    it.shades.forEach((c, i) => {
+      const r = el("rect", { x: x + i * 6, y: cy - 5, width: 5, height: 10, rx: 1 });
+      if (it.hollow) { r.style.fill = "var(--surface)"; r.style.stroke = c; r.style.strokeWidth = "1.2"; }
+      else r.style.fill = c;
+      g.appendChild(r);
+    });
+    return g;
+  }
+  let m;
+  if (it.shape === "circle" || it.shape === "hollow") m = el("circle", { cx: x + 5, cy: cy, r: 4.5 });
+  else if (it.shape === "diamond") m = el("path", { d: diamond(x + 5, cy, 5.5) });
+  else if (it.shape === "line") m = el("rect", { x: x, y: cy - 1.5, width: 12, height: 3, rx: 1.5 });
+  else m = el("rect", { x: x, y: cy - 5, width: 10, height: 10, rx: 2 });
+  if (it.shape === "hollow" || it.hollow) { m.style.fill = "var(--surface)"; m.style.stroke = it.fill; m.style.strokeWidth = "1.6"; }
+  else m.style.fill = it.fill;
+  return m;
+}
+function furniture(W, spec) {
+  const svg = el("svg", { role: "img", "aria-label": spec.title + ". " + (spec.aria || "") });
+  const narrow = W < 560;
+  const better = spec.betterText || (spec.better === "higher" ? "▲ higher is better" : "▼ lower is better");
+  const room = narrow ? W : W - better.length * 6.3 - 18;
+  const lines = wrapWords(spec.title, Math.max(18, Math.floor(room / TITLE_W)));
+  let y = 16;
+  lines.forEach((ln, i) => svg.appendChild(el("text", { class: "fig-title", x: 0, y: y + i * 17 }, ln)));
+  if (narrow) {
+    y += lines.length * 17;
+    svg.appendChild(el("text", { class: "group-text", x: 0, y: y }, better));
+  } else {
+    svg.appendChild(el("text", { class: "group-text", x: W, y: y, "text-anchor": "end" }, better));
+    y += (lines.length - 1) * 17;
+  }
+  y += 22;
+  let lx = 0;
+  const items = spec.legend || [];
+  items.forEach(it => {
+    const textX = it.shape === "line" ? 17 : it.shades ? 22 : 15;
+    /* A label longer than the chart is wide wraps under its own key. */
+    const lines = wrapWords(it.label, Math.max(12, Math.floor((W - textX) / CHAR_W)));
+    const w = textX + Math.max(...lines.map(l => l.length)) * CHAR_W + 16;
+    if (lx > 0 && lx + w > W) { lx = 0; y += 17; }
+    svg.appendChild(keyMark(it, lx, y - 3.5));
+    lines.forEach((ln, li) => svg.appendChild(el("text", { class: "legend-text", x: lx + textX, y: y + li * 14 }, ln)));
+    if (lines.length > 1) { y += (lines.length - 1) * 14; lx = W; } else lx += w;
+  });
+  if (items.length) y += 16;
+  return { svg: svg, y: y, narrow: narrow };
+}
+function finish(host, svg, W, H) {
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("width", W);
+  svg.setAttribute("height", H);
+  svg.style.maxWidth = "100%";
+  host.appendChild(svg);
+}
+function niceStep(step) {
+  const mag = Math.pow(10, Math.floor(Math.log10(step)));
+  const m = Math.round(step / mag * 1000) / 1000;
+  return [1, 2, 2.5, 5, 10].indexOf(m) >= 0;
+}
+/* A tick label as exact as its step: whole numbers plain, a half-step with
+   one decimal, a quarter-step with two. */
+function tickText(v) {
+  if (Math.abs(Math.round(v) - v) < 1e-9) return kfmt(v);
+  return Math.abs(Math.round(v * 10) - v * 10) < 1e-9 ? fmt(v, 1) : fmt(v, 2);
+}
+/* An x axis from 0 to max: hairline gridlines behind the marks, as many round
+   ticks as their labels have room for, and the axis label, wrapped. Returns
+   the height the chart needs. */
+function xAxis(svg, o) {
+  const f = o.fmt || tickText;
+  const labW = f(o.max).length * 6 + 16;
+  const cap = Math.max(1, Math.floor(o.plotW / labW));
+  let n = 1;
+  for (let k = Math.min(cap, 6); k >= 1; k--) if (niceStep(o.max / k)) { n = k; break; }
+  const g = el("g", {});
+  for (let i = 0; i <= n; i++) {
+    const v = o.max / n * i, xx = o.x0 + v / o.max * o.plotW;
+    g.appendChild(el("line", { class: i === 0 ? "ax-line" : "gridline", x1: xx, x2: xx, y1: o.top, y2: o.bottom }));
+    /* A label that would cross the chart's edge is anchored to its tick's
+       inner side instead of centered on it. */
+    const half = f(v).length * 3;
+    const anchor = xx - half < 0 ? "start" : xx + half > o.W ? "end" : "middle";
+    svg.appendChild(el("text", { class: "tick-text", x: xx, y: o.bottom + 13, "text-anchor": anchor }, f(v)));
+  }
+  svg.insertBefore(g, svg.firstChild);
+  let y = o.bottom + 30;
+  if (o.label) {
+    const cx = o.narrow ? o.W / 2 : o.x0 + o.plotW / 2;
+    const lines = wrapWords(o.label, Math.floor((o.narrow ? o.W : Math.max(o.plotW, 240)) / 6.1));
+    lines.forEach((ln, i) => svg.appendChild(el("text", { class: "axis-label", x: cx, y: y + i * 13, "text-anchor": "middle" }, ln)));
+    y += (lines.length - 1) * 13;
+  }
+  return y + 8;
+}
+
+/* ─── Stacked rows: one horizontal bar per row, split into parts, on one
+   axis. Rows may sit in groups under a heading; the caller orders each group
+   largest first. The legend names the parts; a part's own value rides inside
+   it only where it fits.
+   spec: { title, better, unit, totalUnit, axisLabel, valueFmt, tickFmt,
+           parts:[{id,label,swatch,hollow?,inside?,insideInk?}], noLegend?,
+           rows:[{group?, label, key, values:{id:v}, fill(id), stroke?(id)}] } */
+function stackedRows(host, spec) {
+  fitted(host, (h, W) => drawStacked(h, W, spec));
+}
+function drawStacked(host, W, spec) {
+  const legend = spec.noLegend ? [] : spec.parts.map(p => ({ label: p.label, fill: p.swatch, hollow: p.hollow,
+    shades: p.shade ? V.map(k => p.shade(k)) : null }));
+  const f = furniture(W, Object.assign({}, spec, { legend: legend }));
+  const svg = f.svg, narrow = f.narrow;
+  const barH = narrow ? 14 : 16, rowGap = narrow ? 9 : 10, groupGap = 14;
+  const maxLabel = Math.max(...spec.rows.map(r => r.label.length));
+  const labelW = Math.min(Math.round(W * 0.36), 16 + CHAR_W * maxLabel);
+  const totals = spec.rows.map(r => sum(spec.parts.map(p => Math.max(0, r.values[p.id] || 0))));
+  const endText = t => spec.valueFmt(t) + (spec.totalUnit ? " " + spec.totalUnit : "");
+  const padR = 12 + Math.max(...totals.map(t => endText(t).length)) * 5.9;
+  const x0 = labelW + 8, plotW = W - x0 - padR;
+  const max = spec.max || niceMax(Math.max(...totals) * 1.02);
+  const X = v => x0 + (v / max) * plotW;
+  let y = f.y + 4;
+  const top = y - 4;
+  let lastGroup = null;
+  spec.rows.forEach((r, i) => {
+    if (r.group && r.group !== lastGroup) {
+      if (lastGroup !== null) y += groupGap;
+      y += 13;
+      svg.appendChild(el("text", { class: "cat-text strong", x: 0, y: y - 2 }, r.group));
+      y += 4;
+      lastGroup = r.group;
+    }
+    const cy = y + barH / 2;
+    if (r.key) {
+      const s = el("rect", { x: 0, y: cy - 4.5, width: 9, height: 9, rx: 2 });
+      s.style.fill = COLOR[r.key];
+      svg.appendChild(s);
+    }
+    svg.appendChild(el("text", { class: r.group ? "cat-text" : "cat-text strong", x: r.key ? 14 : 0, y: cy + 3.6 }, r.label));
+    let off = 0;
+    const segs = spec.parts.filter(p => (r.values[p.id] || 0) > 0);
+    segs.forEach((p, si) => {
+      const v = r.values[p.id];
+      const xs = X(off), w = X(off + v) - xs;
+      off += v;
+      const last = si === segs.length - 1;
+      const ww = Math.max(1, last ? w : w - Math.min(2, w * 0.4));
+      const fill = r.fill(p.id), stroke = r.stroke ? r.stroke(p.id) : null;
+      const node = el("rect", { class: "bar", x: xs, y: y, width: ww, height: barH });
+      node.style.fill = fill;
+      if (stroke) { node.style.stroke = stroke; node.style.strokeWidth = "1.2"; }
+      const round = last && ww > 6 && !stroke;
+      if (round) { node.setAttribute("rx", 3); node.setAttribute("ry", 3); }
+      svg.appendChild(node);
+      if (round) {
+        const sq = el("rect", { x: xs, y: y, width: Math.min(ww, 4), height: barH });
+        sq.style.fill = fill;
+        svg.appendChild(sq);
+      }
+      const val = spec.valueFmt(v);
+      interactive(node, val + " " + spec.unit + ", " + pc(v / totals[i] * 100) + " of the bar",
+        (r.group ? r.group + " · " : "") + (r.key ? LEGEND[r.key] : r.label) + " · " + p.label);
+      if (!narrow && p.inside !== false && w > val.length * 5.9 + 12) {
+        const t = el("text", { class: "seg-text", x: xs + 6, y: cy + 3.4 }, val);
+        t.style.fill = p.insideInk || "var(--surface)";
+        t.style.pointerEvents = "none";
+        svg.appendChild(t);
+      }
+    });
+    svg.appendChild(el("text", { class: "val-text", x: X(totals[i]) + 6, y: cy + 3.4 }, endText(totals[i])));
+    y += barH + rowGap;
+  });
+  const bottom = y - rowGap + 4;
+  const H = xAxis(svg, { x0: x0, plotW: plotW, top: top, bottom: bottom, max: max, fmt: spec.tickFmt, label: spec.axisLabel, narrow: narrow, W: W });
+  finish(host, svg, W, H);
+}
+
+function lineChart(host, spec) {
+  fitted(host, (h, W) => drawLine(h, W, spec));
+}
+function drawLine(host, W, spec) {
+  const narrow = W < 560;
+  const n = spec.xs.length;
+  const last = s => s.ys[n - 1];
+  const endLabel = s => LEGEND[s.key] + "  " + kfmt(last(s)) + " " + spec.unit;
+  const legend = spec.lines.map(s => ({ fill: COLOR[s.key], shape: "line",
+    label: LEGEND[s.key] + (narrow ? ": " + kfmt(last(s)) + " " + spec.unit + " at " + spec.xs[n - 1] : "") }));
+  const f = furniture(W, Object.assign({}, spec, { legend: legend }));
+  const svg = f.svg;
+  const maxY = spec.max || niceMax(Math.max(...spec.lines.flatMap(s => s.ys)) * 1.06);
+  const yLab = kfmt(maxY).length * 6 + 10;
+  const endW = narrow ? 14 : 16 + Math.max(...spec.lines.map(s => endLabel(s).length)) * CHAR_W;
+  const x0 = yLab + (narrow ? 4 : 22), plotW = W - x0 - endW;
+  const plotH = narrow ? 200 : 240;
+  const top = f.y + 8, bottom = top + plotH;
+  const X = i => x0 + 12 + (i / (n - 1)) * (plotW - 24);
+  const Y = v => bottom - (v / maxY) * plotH;
+  let nt = 4;
+  for (const k of [4, 5, 3, 2]) if (niceStep(maxY / k)) { nt = k; break; }
+  const g = el("g", {});
+  for (let i = 0; i <= nt; i++) {
+    const v = maxY / nt * i, yy = Y(v);
+    g.appendChild(el("line", { class: i ? "gridline" : "ax-line", x1: x0, x2: x0 + plotW, y1: yy, y2: yy }));
+    svg.appendChild(el("text", { class: "tick-text", x: x0 - 6, y: yy + 3.4, "text-anchor": "end" }, kfmt(v)));
+  }
+  spec.xs.forEach((xv, i) => {
+    g.appendChild(el("line", { class: "gridline", x1: X(i), x2: X(i), y1: top, y2: bottom }));
+    svg.appendChild(el("text", { class: "tick-text", x: X(i), y: bottom + 14, "text-anchor": "middle" }, String(xv)));
+  });
+  svg.insertBefore(g, svg.firstChild);
+  if (!narrow && spec.ylabel) {
+    const cy = top + plotH / 2;
+    svg.appendChild(el("text", { class: "axis-label", x: 11, y: cy, "text-anchor": "middle", transform: `rotate(-90 11 ${cy})` }, spec.ylabel));
+  }
+  spec.lines.forEach(s => {
+    const d = s.ys.map((v, i) => (i ? "L" : "M") + X(i).toFixed(1) + "," + Y(v).toFixed(1)).join(" ");
+    const p = el("path", { class: "series-line", d: d });
+    p.style.stroke = COLOR[s.key];
+    svg.appendChild(p);
+    s.ys.forEach((v, i) => {
+      const c = el("circle", { class: "mark", cx: X(i), cy: Y(v), r: 4.2, "stroke-width": 2 });
+      c.style.fill = COLOR[s.key];
+      c.style.stroke = "var(--surface)";
+      interactive(c, kfmt(v) + " " + spec.unit, LEGEND[s.key] + " · " + spec.xs[i] + " " + (spec.xs[i] === 1 ? spec.xword : spec.xwords));
+      svg.appendChild(c);
+    });
+  });
+  if (!narrow) {
+    const ends = spec.lines.map(s => ({ s: s, y: Y(last(s)) })).sort((a, b) => a.y - b.y);
+    for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 14) ends[i].y = ends[i - 1].y + 14;
+    ends.forEach(e => svg.appendChild(el("text", { class: "cat-text strong", x: X(n - 1) + 10, y: e.y + 3.6 }, endLabel(e.s))));
+  }
+  svg.appendChild(el("text", { class: "axis-label", x: narrow ? W / 2 : x0 + plotW / 2, y: bottom + 32, "text-anchor": "middle" }, spec.xlabel));
+  finish(host, svg, W, bottom + 42);
+}
+
+function groupDigits(s) {
+  return String(s).replace(/\d+(\.\d+)?/g, m => {
+    const i = m.indexOf("."), a = i < 0 ? m : m.slice(0, i), b = i < 0 ? "" : m.slice(i);
+    return (a.length > 3 ? a.replace(/\B(?=(\d{3})+(?!\d))/g, ",") : a) + b;
+  });
+}
+function table(host, spec) {
+  const t = el2("table");
+  if (spec.caption) { const c = el2("caption"); c.textContent = spec.caption; t.appendChild(c); }
+  const thead = el2("thead"), htr = el2("tr");
+  spec.cols.forEach(c => { const th = el2("th"); th.setAttribute("scope", "col"); th.textContent = c; htr.appendChild(th); });
+  thead.appendChild(htr); t.appendChild(thead);
+  const tb = el2("tbody");
+  spec.rows.forEach(r => {
+    const tr = el2("tr");
+    r.forEach((c, i) => {
+      const td = el2(i === 0 ? "th" : "td");
+      if (i === 0) td.setAttribute("scope", "row");
+      td.textContent = i === 0 ? c : groupDigits(c);
+      tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb);
+  if (spec.foot) {
+    const tf = el2("tfoot"), tr = el2("tr");
+    spec.foot.forEach((c, i) => { const td = el2("td"); td.textContent = i === 0 ? c : groupDigits(c); tr.appendChild(td); });
+    tf.appendChild(tr); t.appendChild(tf);
+  }
+  host.appendChild(t);
+}
+
+/* ─── The three GearSwap versions ─────────────────────────────────────────── */
+const DV = {"bagItems":{"D":{"BLU":860,"BRD":410,"COR":601,"GEO":441,"WAR":517,"WHM":441},"current-0.940":{"BLU":862,"BRD":415,"COR":605,"GEO":443,"WAR":523,"WHM":443},"previous-0.940":{"BLU":841,"BRD":397,"COR":584,"GEO":423,"WAR":502,"WHM":423}},"counts":{"lean":{"1.5.12":{"gs_buff_refresh":127.038,"gs_event_change":135.863,"gs_event_empty":4296.81,"gs_event_proposed":178.713,"gs_refresh_full":271,"gs_refresh_full_pet":41.65,"gs_refresh_short":2353.06,"gs_refresh_throttled":1688.64},"2.1+0f8350e":{"gs_buff_refresh":127.038,"gs_event_change":137.625,"gs_event_empty":320.9,"gs_event_proposed":170.75,"gs_refresh_full":297.338,"gs_refresh_full_pet":40.725,"gs_refresh_short":17.1626,"gs_refresh_throttled":70.8878},"sel":{"gs_buff_refresh":127.038,"gs_event_change":116.526,"gs_event_empty":252.85,"gs_event_proposed":295.6,"gs_refresh_full":920.9,"gs_refresh_full_pet":114.363,"gs_refresh_short":5.7128,"gs_refresh_throttled":18.2504}},"moderate":{"1.5.12":{"gs_buff_refresh":127.038,"gs_event_change":135.863,"gs_event_empty":4272.23,"gs_event_proposed":203.3,"gs_refresh_full":271,"gs_refresh_full_pet":41.65,"gs_refresh_short":2353.06,"gs_refresh_throttled":1688.64},"2.1+0f8350e":{"gs_buff_refresh":127.038,"gs_event_change":138.563,"gs_event_empty":327.9,"gs_event_proposed":187.3,"gs_refresh_full":308.763,"gs_refresh_full_pet":40.725,"gs_refresh_short":17.4252,"gs_refresh_throttled":81.1004},"sel":{"gs_buff_refresh":127.038,"gs_event_change":116.526,"gs_event_empty":253.063,"gs_event_proposed":295.4,"gs_refresh_full":920.913,"gs_refresh_full_pet":114.363,"gs_refresh_short":5.7128,"gs_refresh_throttled":18.2504}}},"dmem":{"game":{"BLU":{"index_bytes_per_row":194,"index_kb_est":91,"records_kb":75.7,"reindex_rows":72},"BRD":{"index_bytes_per_row":205,"index_kb_est":41.7,"records_kb":33.3,"reindex_rows":63},"COR":{"index_bytes_per_row":196,"index_kb_est":55.6,"records_kb":48.7,"reindex_rows":80},"GEO":{"index_bytes_per_row":196,"index_kb_est":43.4,"records_kb":36.3,"reindex_rows":71},"WAR":{"index_bytes_per_row":190,"index_kb_est":48.5,"records_kb":45.6,"reindex_rows":73},"WHM":{"index_bytes_per_row":196,"index_kb_est":43.4,"records_kb":36.3,"reindex_rows":71}},"gameBox":{"index_kb_est":323.7,"records_kb":275.9},"offline":{"BLU":{"index_bytes_per_row":269,"index_kb":126.1,"records_kb":40.4,"rows":480},"BRD":{"index_bytes_per_row":286,"index_kb":58.1,"records_kb":17.5,"rows":208},"COR":{"index_bytes_per_row":279,"index_kb":78.9,"records_kb":23.5,"rows":290},"GEO":{"index_bytes_per_row":290,"index_kb":64.4,"records_kb":17.5,"rows":227},"WAR":{"index_bytes_per_row":277,"index_kb":71,"records_kb":23.5,"rows":262},"WHM":{"index_bytes_per_row":290,"index_kb":64.4,"records_kb":17.5,"rows":227}},"offlineBox":{"index_kb":462.8,"records_kb":139.9}},"fig":{"dBagHi":0.0573671,"dBagLo":0.0467107,"dHi":0.875075,"dLo":0.762629,"dWrHi":112.92,"dWrLo":62.366,"dWsHi":0.111078,"dWsLo":0.0606662,"drift":0.23077,"newBagHi":0.856552,"newBagLo":0.727376,"newHi":0.158181,"newLo":0.0892504,"newWrHi":98.6925,"newWrLo":55.8719,"newWsHi":0.0173983,"newWsLo":0.00906531,"prevBagHi":0.94,"prevBagLo":0.79,"reportChurnHi":0.0134659,"reportChurnLo":0.0038689,"seUsHi":0.100798,"seUsLo":0.00468753,"wrUpHi":0.31041,"wrUpLo":0.0895861},"fps":{"BLU":60,"BRD":20,"COR":20,"GEO":20,"WAR":20,"WHM":20},"held":{"first":{"1.5.12":1284.4,"2.1+0f8350e":2314.6,"sel":944.3},"job":{"BLU":{"1.5.12":1279.7,"2.1+0f8350e":2293.4,"sel":956},"BRD":{"1.5.12":1284.4,"2.1+0f8350e":2314.6,"sel":944.3},"COR":{"1.5.12":1307.1,"2.1+0f8350e":2243,"sel":940.3},"GEO":{"1.5.12":1274.8,"2.1+0f8350e":2300.7,"sel":950.3},"WAR":{"1.5.12":1277.4,"2.1+0f8350e":2303.3,"sel":917.7},"WHM":{"1.5.12":1283.4,"2.1+0f8350e":2305.8,"sel":938.8}},"sharedOnce":{"1.5.12":0.12,"2.1+0f8350e":0,"sel":0.7},"warm":{"1.5.12":1284.48,"2.1+0f8350e":2289.24,"sel":940.62}},"name":{"D":"GearswapRevised","current-0.940":"GearSwap 0.940 (new)","previous-0.940":"GearSwap 0.940 (previous)"},"order":["previous-0.940","current-0.940","D"],"passes":16,"session":{"D":{"day":"2026-09-30","minutes":112.742},"current-0.940":{"day":"2026-09-30","minutes":50.1102},"previous-0.940":{"day":"2026-09-26","minutes":16.1936}},"short":{"D":"GearswapRevised","current-0.940":"0.940 (new)","previous-0.940":"0.940 (previous)"},"v":{"D":{"allocTotal":{"lean":{"1.5.12":4279.02,"2.1+0f8350e":715.147,"sel":2468.11},"moderate":{"1.5.12":4285.72,"2.1+0f8350e":743.111,"sel":2469}},"causes":{"alloc":{"lean":{"1.5.12":{"crossings":28.7893,"event":343.783,"own":77.1447,"refresh":3829.3},"2.1+0f8350e":{"crossings":1.32902,"event":56.8229,"own":21.5464,"refresh":635.448},"sel":{"crossings":366.506,"event":61.9912,"own":143.862,"refresh":1895.75}},"moderate":{"1.5.12":{"crossings":29.3076,"event":344.513,"own":82.6002,"refresh":3829.3},"2.1+0f8350e":{"crossings":1.84788,"event":59.1083,"own":24.2067,"refresh":657.948},"sel":{"crossings":366.506,"event":61.9868,"own":144.732,"refresh":1895.78}}},"cpu":{"lean":{"1.5.12":{"crossings":43.694,"event":10123.1,"own":471.828,"refresh":28607.2},"2.1+0f8350e":{"crossings":2.43246,"event":1723.04,"own":323.543,"refresh":4118.71},"sel":{"crossings":633.43,"event":1970.19,"own":1240.53,"refresh":12251}},"moderate":{"1.5.12":{"crossings":44.4563,"event":10167.8,"own":478.872,"refresh":28607.2},"2.1+0f8350e":{"crossings":3.19539,"event":1804.04,"own":336.896,"refresh":4270.63},"sel":{"crossings":636.643,"event":1969.96,"own":1252.52,"refresh":12251.2}}}},"causesJob":{"cpu":{"moderate":{"BLU":{"1.5.12":{"crossings":7.24582,"event":1520.97,"own":71.0062,"refresh":4250.1},"2.1+0f8350e":{"crossings":0.424361,"event":264.676,"own":57.4387,"refresh":685.046},"sel":{"crossings":107.058,"event":296.333,"own":221.883,"refresh":2043.75}},"BRD":{"1.5.12":{"crossings":7.36208,"event":1830.42,"own":100.272,"refresh":4925.67},"2.1+0f8350e":{"crossings":0.400065,"event":448.088,"own":74.4831,"refresh":984.721},"sel":{"crossings":106.237,"event":403.48,"own":189.793,"refresh":2146.41}},"COR":{"1.5.12":{"crossings":8.01526,"event":1759.38,"own":81.7742,"refresh":4646.32},"2.1+0f8350e":{"crossings":1.18946,"event":265.814,"own":48.2837,"refresh":712.135},"sel":{"crossings":109.738,"event":309.82,"own":208.306,"refresh":2109.81}},"GEO":{"1.5.12":{"crossings":7.33008,"event":1814.78,"own":89.4594,"refresh":5258.15},"2.1+0f8350e":{"crossings":0.358766,"event":343.868,"own":59.0659,"refresh":765.393},"sel":{"crossings":103.498,"event":393.585,"own":208.575,"refresh":2183.91}},"WAR":{"1.5.12":{"crossings":7.30476,"event":1586.27,"own":66.7503,"refresh":4605.08},"2.1+0f8350e":{"crossings":0.422596,"event":275.295,"own":51.5062,"refresh":686.792},"sel":{"crossings":105.416,"event":309.223,"own":215.239,"refresh":1988.36}},"WHM":{"1.5.12":{"crossings":7.1983,"event":1655.94,"own":69.6098,"refresh":4921.9},"2.1+0f8350e":{"crossings":0.400144,"event":206.301,"own":46.1181,"refresh":436.543},"sel":{"crossings":104.697,"event":257.523,"own":208.72,"refresh":1778.94}}}}},"cpuJob":{"moderate":{"BLU":{"1.5.12":5849.32,"2.1+0f8350e":1007.59,"sel":2669.02},"BRD":{"1.5.12":6863.72,"2.1+0f8350e":1507.69,"sel":2845.92},"COR":{"1.5.12":6495.49,"2.1+0f8350e":1027.42,"sel":2737.67},"GEO":{"1.5.12":7169.72,"2.1+0f8350e":1168.69,"sel":2889.57},"WAR":{"1.5.12":6265.4,"2.1+0f8350e":1014.02,"sel":2618.24},"WHM":{"1.5.12":6654.65,"2.1+0f8350e":689.363,"sel":2349.88}}},"cpuTotal":{"lean":{"1.5.12":39245.8,"2.1+0f8350e":6167.73,"sel":16095.2},"moderate":{"1.5.12":39298.3,"2.1+0f8350e":6414.77,"sel":16110.3}},"gsPrice":{"BLU":{"changeKb":13.6816,"changeUs":401.729,"emptyKb":4.32168,"emptyUs":114.061,"fullKb":120.515,"fullUs":762.788,"petUs":null,"proposedKb":6.01084,"proposedUs":189.015,"shortKb":85.4524,"shortUs":568.742},"BRD":{"changeKb":13.7302,"changeUs":431.741,"emptyKb":4.32168,"emptyUs":131.407,"fullKb":115.664,"fullUs":781.495,"petUs":null,"proposedKb":6.0126,"proposedUs":224.949,"shortKb":80.9448,"shortUs":642.933},"COR":{"changeKb":10.9301,"changeUs":364.308,"emptyKb":4.3209,"emptyUs":132,"fullKb":121.382,"fullUs":795.261,"petUs":null,"proposedKb":6.10381,"proposedUs":241.002,"shortKb":86.4448,"shortUs":618.943},"GEO":{"changeKb":13.7416,"changeUs":408.865,"emptyKb":4.32168,"emptyUs":131.014,"fullKb":117.382,"fullUs":801.849,"petUs":118.866,"proposedKb":6.01094,"proposedUs":225.895,"shortKb":82.4448,"shortUs":689.479},"WAR":{"changeKb":13.0308,"changeUs":403.163,"emptyKb":4.32168,"emptyUs":118.859,"fullKb":117.257,"fullUs":740.363,"petUs":null,"proposedKb":6.01006,"proposedUs":208.383,"shortKb":82.4448,"shortUs":614.853},"WHM":{"changeKb":13.7416,"changeUs":408.865,"emptyKb":4.32168,"emptyUs":131.014,"fullKb":117.382,"fullUs":801.849,"petUs":null,"proposedKb":6.01094,"proposedUs":225.895,"shortKb":82.4448,"shortUs":689.479}},"se":{"causes":{"lean":{"1.5.12":{"crossings":0.0764773,"event":135.334,"own":1.3293,"refresh":889.54},"2.1+0f8350e":{"crossings":0.0527231,"event":16.0686,"own":0.855349,"refresh":30.8677},"sel":{"crossings":1.22362,"event":24.7513,"own":3.10672,"refresh":66.412}},"moderate":{"1.5.12":{"crossings":0.0771985,"event":133.646,"own":1.41019,"refresh":889.54},"2.1+0f8350e":{"crossings":0.0508165,"event":16.7071,"own":0.962444,"refresh":31.6571},"sel":{"crossings":1.2456,"event":24.7297,"own":3.11847,"refresh":66.382}}},"cpuJob":{"moderate":{"BLU":{"1.5.12":134.478,"2.1+0f8350e":15.07,"sel":25.9366},"BRD":{"1.5.12":121.828,"2.1+0f8350e":15.8447,"sel":23.3721},"COR":{"1.5.12":141.698,"2.1+0f8350e":14.0367,"sel":23.8475},"GEO":{"1.5.12":417.77,"2.1+0f8350e":18.6907,"sel":32.0901},"WAR":{"1.5.12":146.35,"2.1+0f8350e":12.8407,"sel":22.417},"WHM":{"1.5.12":424.712,"2.1+0f8350e":9.41122,"sel":22.0248}}},"cpuTotal":{"lean":{"1.5.12":897.297,"2.1+0f8350e":39.62,"sel":76.9781},"moderate":{"1.5.12":897.193,"2.1+0f8350e":41.1488,"sel":76.9418}}}},"current-0.940":{"allocTotal":{"lean":{"1.5.12":14457,"2.1+0f8350e":1928.17,"sel":5850.18},"moderate":{"1.5.12":14463.7,"2.1+0f8350e":1991.13,"sel":5851.11}},"causes":{"alloc":{"lean":{"1.5.12":{"crossings":28.7893,"event":1374.52,"own":77.1447,"refresh":12976.5},"2.1+0f8350e":{"crossings":1.32902,"event":168.816,"own":21.5464,"refresh":1736.48},"sel":{"crossings":366.506,"event":187.537,"own":143.862,"refresh":5152.27}},"moderate":{"1.5.12":{"crossings":29.3076,"event":1375.25,"own":82.6002,"refresh":12976.5},"2.1+0f8350e":{"crossings":1.84788,"event":176.184,"own":24.2067,"refresh":1788.89},"sel":{"crossings":366.506,"event":187.536,"own":144.732,"refresh":5152.34}}},"cpu":{"lean":{"1.5.12":{"crossings":43.694,"event":76704.3,"own":471.828,"refresh":135114},"2.1+0f8350e":{"crossings":2.43246,"event":14126,"own":323.543,"refresh":16466.4},"sel":{"crossings":633.43,"event":14681.5,"own":1240.53,"refresh":48736.3}},"moderate":{"1.5.12":{"crossings":44.4563,"event":76846.7,"own":478.872,"refresh":135114},"2.1+0f8350e":{"crossings":3.19539,"event":14573.4,"own":336.896,"refresh":16948.2},"sel":{"crossings":636.643,"event":14681.3,"own":1252.52,"refresh":48736.9}}}},"causesJob":{"cpu":{"moderate":{"BLU":{"1.5.12":{"crossings":7.24582,"event":12919.1,"own":71.0062,"refresh":31106.8},"2.1+0f8350e":{"crossings":0.424361,"event":2537.51,"own":57.4387,"refresh":3921.23},"sel":{"crossings":107.058,"event":2634.71,"own":221.883,"refresh":11535.2}},"BRD":{"1.5.12":{"crossings":7.36208,"event":12265.6,"own":100.272,"refresh":17994.3},"2.1+0f8350e":{"crossings":0.400065,"event":3003.65,"own":74.4831,"refresh":3049.81},"sel":{"crossings":106.237,"event":2494.23,"own":189.793,"refresh":6582.24}},"COR":{"1.5.12":{"crossings":8.01526,"event":13250.1,"own":81.7742,"refresh":23093.8},"2.1+0f8350e":{"crossings":1.18946,"event":2378.88,"own":48.2837,"refresh":2845.61},"sel":{"crossings":109.738,"event":2427.33,"own":208.306,"refresh":8316.24}},"GEO":{"1.5.12":{"crossings":7.33008,"event":13454.9,"own":89.4594,"refresh":20348.4},"2.1+0f8350e":{"crossings":0.358766,"event":2793.75,"own":59.0659,"refresh":2544.79},"sel":{"crossings":103.498,"event":2996.08,"own":208.575,"refresh":7266.02}},"WAR":{"1.5.12":{"crossings":7.30476,"event":12810.3,"own":66.7503,"refresh":23188.6},"2.1+0f8350e":{"crossings":0.422596,"event":2211.14,"own":51.5062,"refresh":3009.62},"sel":{"crossings":105.416,"event":2283.81,"own":215.239,"refresh":8639.43}},"WHM":{"1.5.12":{"crossings":7.1983,"event":12146.7,"own":69.6098,"refresh":19382.5},"2.1+0f8350e":{"crossings":0.400144,"event":1648.46,"own":46.1181,"refresh":1577.09},"sel":{"crossings":104.697,"event":1845.18,"own":208.72,"refresh":6397.81}}}}},"cpuJob":{"moderate":{"BLU":{"1.5.12":44104.1,"2.1+0f8350e":6516.61,"sel":14498.8},"BRD":{"1.5.12":30367.5,"2.1+0f8350e":6128.35,"sel":9372.5},"COR":{"1.5.12":36433.7,"2.1+0f8350e":5273.96,"sel":11061.6},"GEO":{"1.5.12":33900.1,"2.1+0f8350e":5397.96,"sel":10574.2},"WAR":{"1.5.12":36073,"2.1+0f8350e":5272.69,"sel":11243.9},"WHM":{"1.5.12":31606,"2.1+0f8350e":3272.07,"sel":8556.41}}},"cpuTotal":{"lean":{"1.5.12":212334,"2.1+0f8350e":30918.5,"sel":65291.7},"moderate":{"1.5.12":212484,"2.1+0f8350e":31861.6,"sel":65307.4}},"gsPrice":{"BLU":{"changeKb":33.125,"changeUs":4382.91,"emptyKb":24.9641,"emptyUs":946.403,"fullKb":466.3,"fullUs":4294.97,"petUs":null,"proposedKb":26.6516,"proposedUs":1281.97,"shortKb":431.237,"shortUs":4315.31},"BRD":{"changeKb":25.3333,"changeUs":3271.18,"emptyKb":17.4967,"emptyUs":871.694,"fullKb":263.811,"fullUs":2393,"petUs":null,"proposedKb":19.1851,"proposedUs":1103.93,"shortKb":228.967,"shortUs":2415.31},"COR":{"changeKb":21.5492,"changeUs":4100.82,"emptyKb":15.9771,"emptyUs":979.541,"fullKb":319.483,"fullUs":3128.01,"petUs":null,"proposedKb":17.7627,"proposedUs":1327.07,"shortKb":284.546,"shortUs":3166.94},"GEO":{"changeKb":24.4783,"changeUs":3575.38,"emptyKb":16.0695,"emptyUs":949.92,"fullKb":295.253,"fullUs":2883.79,"petUs":118.866,"proposedKb":17.7562,"proposedUs":1142.86,"shortKb":260.065,"shortUs":2733.92},"WAR":{"changeKb":26.2233,"changeUs":3390.71,"emptyKb":18.4047,"emptyUs":962.28,"fullKb":327.323,"fullUs":3212.44,"petUs":null,"proposedKb":20.0896,"proposedUs":1162.86,"shortKb":292.385,"shortUs":3156.57},"WHM":{"changeKb":24.4783,"changeUs":3575.38,"emptyKb":16.0695,"emptyUs":949.92,"fullKb":295.253,"fullUs":2883.79,"petUs":null,"proposedKb":17.7562,"proposedUs":1142.86,"shortKb":260.065,"shortUs":2733.92}},"se":{"causes":{"lean":{"1.5.12":{"crossings":0.0764773,"event":429.055,"own":1.3293,"refresh":1497.51},"2.1+0f8350e":{"crossings":0.0527231,"event":107.272,"own":0.855349,"refresh":122.669},"sel":{"crossings":1.22362,"event":131.189,"own":3.10672,"refresh":226.804}},"moderate":{"1.5.12":{"crossings":0.0771985,"event":434.542,"own":1.41019,"refresh":1497.51},"2.1+0f8350e":{"crossings":0.0508165,"event":113.058,"own":0.962444,"refresh":125.611},"sel":{"crossings":1.2456,"event":131.159,"own":3.11847,"refresh":226.639}}},"cpuJob":{"moderate":{"BLU":{"1.5.12":416.202,"2.1+0f8350e":99.3529,"sel":158.622},"BRD":{"1.5.12":400.872,"2.1+0f8350e":74.8976,"sel":88.4266},"COR":{"1.5.12":467.531,"2.1+0f8350e":64.1055,"sel":82.6678},"GEO":{"1.5.12":568.393,"2.1+0f8350e":79.0499,"sel":106.508},"WAR":{"1.5.12":319.143,"2.1+0f8350e":60.0275,"sel":76.1205},"WHM":{"1.5.12":573.253,"2.1+0f8350e":41.2613,"sel":62.4377}}},"cpuTotal":{"lean":{"1.5.12":1652.12,"2.1+0f8350e":212.568,"sel":323.555},"moderate":{"1.5.12":1661.68,"2.1+0f8350e":220.969,"sel":323.384}}}},"previous-0.940":{"allocTotal":{"lean":{"1.5.12":14511.4,"2.1+0f8350e":1935.5,"sel":5868.95},"moderate":{"1.5.12":14518.1,"2.1+0f8350e":1999.13,"sel":5869.89}},"causes":{"alloc":{"lean":{"1.5.12":{"crossings":28.7893,"event":1380.36,"own":77.1447,"refresh":13025.1},"2.1+0f8350e":{"crossings":1.32902,"event":169.461,"own":21.5464,"refresh":1743.17},"sel":{"crossings":366.506,"event":188.203,"own":143.862,"refresh":5170.38}},"moderate":{"1.5.12":{"crossings":29.3076,"event":1381.09,"own":82.6002,"refresh":13025.1},"2.1+0f8350e":{"crossings":1.84788,"event":176.828,"own":24.2067,"refresh":1796.25},"sel":{"crossings":366.506,"event":188.201,"own":144.732,"refresh":5170.45}}},"cpu":{"lean":{"1.5.12":{"crossings":43.694,"event":70274.3,"own":471.828,"refresh":160648},"2.1+0f8350e":{"crossings":2.43246,"event":12621.1,"own":323.543,"refresh":18845.9},"sel":{"crossings":633.43,"event":13036.7,"own":1240.53,"refresh":55571.6}},"moderate":{"1.5.12":{"crossings":44.4563,"event":70434.2,"own":478.872,"refresh":160648},"2.1+0f8350e":{"crossings":3.19539,"event":13041.9,"own":336.896,"refresh":19411.7},"sel":{"crossings":636.643,"event":13037.3,"own":1252.52,"refresh":55572.3}}}},"causesJob":{"cpu":{"moderate":{"BLU":{"1.5.12":{"crossings":7.24582,"event":11649.8,"own":71.0062,"refresh":38386.6},"2.1+0f8350e":{"crossings":0.424361,"event":2075.67,"own":57.4387,"refresh":4602.05},"sel":{"crossings":107.058,"event":2105.07,"own":221.883,"refresh":13492.7}},"BRD":{"1.5.12":{"crossings":7.36208,"event":12205.2,"own":100.272,"refresh":21380.2},"2.1+0f8350e":{"crossings":0.400065,"event":2896.22,"own":74.4831,"refresh":3589.84},"sel":{"crossings":106.237,"event":2374.88,"own":189.793,"refresh":7742.96}},"COR":{"1.5.12":{"crossings":8.01526,"event":12037.3,"own":81.7742,"refresh":26850.6},"2.1+0f8350e":{"crossings":1.18946,"event":2142.11,"own":48.2837,"refresh":3304.03},"sel":{"crossings":109.738,"event":2220.34,"own":208.306,"refresh":9655.07}},"GEO":{"1.5.12":{"crossings":7.33008,"event":12058.6,"own":89.4594,"refresh":23960.1},"2.1+0f8350e":{"crossings":0.358766,"event":2483.39,"own":59.0659,"refresh":2781.96},"sel":{"crossings":103.498,"event":2658.91,"own":208.575,"refresh":7938.96}},"WAR":{"1.5.12":{"crossings":7.30476,"event":11590.3,"own":66.7503,"refresh":27131.8},"2.1+0f8350e":{"crossings":0.422596,"event":1979.98,"own":51.5062,"refresh":3398.73},"sel":{"crossings":105.416,"event":2046.29,"own":215.239,"refresh":9733.2}},"WHM":{"1.5.12":{"crossings":7.1983,"event":10893,"own":69.6098,"refresh":22939.1},"2.1+0f8350e":{"crossings":0.400144,"event":1464.58,"own":46.1181,"refresh":1735.05},"sel":{"crossings":104.697,"event":1631.84,"own":208.72,"refresh":7009.42}}}}},"cpuJob":{"moderate":{"BLU":{"1.5.12":50114.6,"2.1+0f8350e":6735.58,"sel":15926.7},"BRD":{"1.5.12":33693.1,"2.1+0f8350e":6560.93,"sel":10413.9},"COR":{"1.5.12":38977.7,"2.1+0f8350e":5495.62,"sel":12193.5},"GEO":{"1.5.12":36115.4,"2.1+0f8350e":5324.77,"sel":10909.9},"WAR":{"1.5.12":38796.2,"2.1+0f8350e":5430.64,"sel":12100.1},"WHM":{"1.5.12":33908.9,"2.1+0f8350e":3246.15,"sel":8954.68}}},"cpuTotal":{"lean":{"1.5.12":231438,"2.1+0f8350e":31793,"sel":70482.2},"moderate":{"1.5.12":231606,"2.1+0f8350e":32793.7,"sel":70498.8}},"gsPrice":{"BLU":{"changeKb":33.6658,"changeUs":3323.68,"emptyKb":24.9492,"emptyUs":872.692,"fullKb":467.022,"fullUs":5020.93,"petUs":null,"proposedKb":26.6375,"proposedUs":914.286,"shortKb":431.71,"shortUs":5358.29},"BRD":{"changeKb":25.4529,"changeUs":3110.33,"emptyKb":17.4922,"emptyUs":873.656,"fullKb":267.639,"fullUs":2814.72,"petUs":null,"proposedKb":19.1805,"proposedUs":1013.57,"shortKb":232.796,"shortUs":2873.92},"COR":{"changeKb":21.7492,"changeUs":3653.01,"emptyKb":15.9689,"emptyUs":888.566,"fullKb":319.725,"fullUs":3631.54,"petUs":null,"proposedKb":17.7493,"proposedUs":1278.69,"shortKb":284.788,"shortUs":3682.7},"GEO":{"changeKb":24.4758,"changeUs":3168.59,"emptyKb":16.325,"emptyUs":853.175,"fullKb":295.839,"fullUs":3159.47,"petUs":118.866,"proposedKb":18.0117,"proposedUs":1000,"shortKb":260.651,"shortUs":3252.95},"WAR":{"changeKb":26.3836,"changeUs":3000,"emptyKb":18.389,"emptyUs":872.531,"fullKb":328.167,"fullUs":3617.73,"petUs":null,"proposedKb":20.0765,"proposedUs":1042.73,"shortKb":293.229,"shortUs":3709.89},"WHM":{"changeKb":24.4758,"changeUs":3168.59,"emptyKb":16.325,"emptyUs":853.175,"fullKb":295.839,"fullUs":3159.47,"petUs":null,"proposedKb":18.0117,"proposedUs":1000,"shortKb":260.651,"shortUs":3252.95}},"se":{"causes":{"lean":{"1.5.12":{"crossings":0.0764773,"event":609.498,"own":1.3293,"refresh":2093.55},"2.1+0f8350e":{"crossings":0.0527231,"event":101.237,"own":0.855349,"refresh":140.498},"sel":{"crossings":1.22362,"event":127.57,"own":3.10672,"refresh":259.421}},"moderate":{"1.5.12":{"crossings":0.0771985,"event":613.901,"own":1.41019,"refresh":2093.55},"2.1+0f8350e":{"crossings":0.0508165,"event":105.414,"own":0.962444,"refresh":143.68},"sel":{"crossings":1.2456,"event":127.625,"own":3.11847,"refresh":259.232}}},"cpuJob":{"moderate":{"BLU":{"1.5.12":791.628,"2.1+0f8350e":94.9859,"sel":134.676},"BRD":{"1.5.12":493.609,"2.1+0f8350e":69.8255,"sel":85.0251},"COR":{"1.5.12":750.496,"2.1+0f8350e":68.3172,"sel":96.2889},"GEO":{"1.5.12":395.649,"2.1+0f8350e":80.5736,"sel":115.516},"WAR":{"1.5.12":614.339,"2.1+0f8350e":63.3553,"sel":85.0147},"WHM":{"1.5.12":387.55,"2.1+0f8350e":42.4178,"sel":73.8944}}},"cpuTotal":{"lean":{"1.5.12":2209.47,"2.1+0f8350e":207.046,"sel":314.009},"moderate":{"1.5.12":2206.92,"2.1+0f8350e":213.826,"sel":313.764}}}}},"what":{"D":"Rahvin's own fork of GearSwap 0.940, meant for players to use in place of GearSwap's Live and Dev versions. It keeps each bag's item list between refreshes and indexes the equippable bags by item name","current-0.940":"the release of 2026-09-30, whose bag rebuild Windower/Lua #2567 refactored and #2568 guarded","previous-0.940":"the release as it stood before Windower/Lua #2567"}};
+const GV = DV.order, PREV = GV[0], NEW = GV[1], DD = GV[2];
+const GNAME = DV.name, GSHORT = DV.short, FIG = DV.fig;
+/* The column heads of a narrow table: the version in two short lines, the
+   last one free to break between its two words. */
+const GHEAD = { [PREV]: "0.940 previous", [NEW]: "0.940 new", [DD]: "Gearswap​Revised" };
+const CAUSE_SHORT = { refresh: "GearSwap's refresh", event: "GearSwap's walk", crossings: "Windower crossings", own: "The suite's own code" };
+const CFG = "moderate";
+
+function at(v) { return DV.v[v]; }
+function czv(v, unit, cfg, k) { return DV.v[v].causes[unit][cfg][k]; }
+/* A figure's standard error under one version, where the run carries one. */
+function seV(v, ...path) {
+  let t = DV.v[v].se;
+  for (const p of path) { if (t == null) return null; t = t[p]; }
+  return typeof t === "number" ? t : null;
+}
+function gsShareV(v, cfg, k) { const c = czv(v, "cpu", cfg, k); return (c.refresh + c.event) / at(v).cpuTotal[cfg][k] * 100; }
+function cnt(cfg, k) { return DV.counts[cfg][k]; }
+/* A suite's memory held at six boxes, the same under every version; and what
+   GearswapRevised keeps beyond 0.940 for the six clients: its records from the
+   game, its index from outside it. */
+function sixBoxes(k) { return DV.held.first[k] + 5 * DV.held.warm[k]; }
+function dExtraKb() { return DV.dmem.gameBox.records_kb + DV.dmem.offlineBox.index_kb; }
+/* The same with the index at the game's own cost a row, a smaller figure. */
+function dExtraGameKb() { return DV.dmem.gameBox.records_kb + DV.dmem.gameBox.index_kb_est; }
+/* How much less b is than a, in percent (negative where it is more). */
+function less(a, b) { return (a - b) / a * 100; }
+function lo(xs) { return Math.min(...xs); }
+function hi(xs) { return Math.max(...xs); }
+function pc1(x) { return fmt(x, 1) + "%"; }
+function pcSpan(xs, f) { f = f || pc; const a = f(lo(xs)), b = f(hi(xs)); return a === b ? a : a + " to " + b; }
+function msSpan(xs, dp) { const a = fmt(lo(xs) / 1000, dp), b = fmt(hi(xs) / 1000, dp); return (a === b ? a : a + " to " + b) + " ms"; }
+const DRIFT = FIG.drift * 100;
+/* A difference between versions inside the drift between sessions is not
+   resolved; one well outside it is. */
+function resolved(p) { return Math.abs(p) > 2 * DRIFT; }
+function inside(p) { return Math.abs(p) < DRIFT; }
+/* A set of differences against 0.940 (previous), each "how much less" in
+   percent, said as a direction and a span, and placed against the drift. */
+function moveText(xs) {
+  if (lo(xs) >= 0) return pcSpan(xs, pc1) + " below";
+  if (hi(xs) <= 0) return pcSpan(xs.map(x => -x), pc1) + " above";
+  return "from " + pc1(hi(xs)) + " below to " + pc1(-lo(xs)) + " above";
+}
+function driftText(xs) {
+  return xs.every(inside) ? "inside the drift between sessions, so it is not resolved" :
+    xs.every(resolved) ? "well outside the drift between sessions" : "partly beyond the drift between sessions";
+}
+/* One figure under each later version against 0.940 (previous), every column. */
+function versusText(f, what) {
+  const span = v => COLS.map(x => less(f({ v: PREV, k: x.k, cfg: x.cfg }), f({ v: v, k: x.k, cfg: x.cfg })));
+  const n = span(NEW), d = span(DD);
+  return "On every suite in both states, 0.940 (new)'s " + what + " reads " + moveText(n) + " 0.940 (previous)'s, " + driftText(n) +
+    ". GearswapRevised's reads " + moveText(d) + " it, " + driftText(d) + ".";
+}
+/* Every column the page compares: each suite in each state. */
+const COLS = V.flatMap(k => CFGS.map(cfg => ({ k: k, cfg: cfg })));
+/* The suites in the order the report draws them: the dearest first, under the
+   first version, and kept in that order under every version so rows align. */
+const ORDER = byLargest(V, k => at(PREV).cpuTotal[CFG][k]);
+
+/* The masthead ------------------------------------------------------------- */
+(function masthead() {
+  const ul = document.getElementById("versions");
+  GV.forEach(v => {
+    const li = el2("li"); li.id = "ver-" + v; ul.appendChild(li);
+    put(li.id, B(GNAME[v]), ": " + DV.what[v] + ".");
+  });
+  put("notice", "Each version was priced from its own counting session: 0.940 (previous) on " + DV.session[PREV].day + ", 0.940 (new) and GearswapRevised on the evening of " +
+    DV.session[NEW].day + ", two hours apart. Between those two sessions the same code read up to " + pc(DRIFT) + " apart. Every difference in time between versions is stated beside that drift. GearswapRevised's difference stands well outside it. 0.940 (new)'s does not, so it is not resolved.");
+})();
+
+/* At a glance ----------------------------------------------------------------- */
+(function glance() {
+  put("glance-lead", "Engine CPU for the six clients together, per second of fighting, in the moderate state, under each version of GearSwap, and what it is made of. A millisecond of work each second is a tenth of one percent of one processor core. Every bar on the three cards shares one scale, split by cause, and a shorter bar is better. Each figure carries plus or minus one standard error. The table on each card gives each cause's share of that suite's work under each version, and the churn at its foot is the three versions' in the same order.");
+  const host = document.getElementById("glance-cards");
+  const max = Math.max(...GV.flatMap(v => V.map(k => at(v).cpuTotal[CFG][k])));
+  const cheapUnder = GV.map(v => argmin(V, k => at(v).cpuTotal[CFG][k]));
+  const dearUnder = GV.map(v => argmax(V, k => at(v).cpuTotal[CFG][k]));
+  ORDER.forEach(k => {
+    const card = el2("div"); card.className = "suite-card";
+    const name = el2("div"); name.className = "sc-name";
+    const sw = el2("span"); sw.className = "swatch"; sw.style.background = COLOR[k];
+    const nm = el2("span"); nm.textContent = LEGEND[k];
+    const rank = el2("span"); rank.className = "sc-rank";
+    rank.textContent = cheapUnder.every(x => x === k) ? "the cheapest" : dearUnder.every(x => x === k) ? "the dearest" : "";
+    name.append(sw, nm, rank);
+    card.appendChild(name);
+    GV.forEach(v => {
+      const total = at(v).cpuTotal[CFG][k], c = czv(v, "cpu", CFG, k);
+      const row = el2("div"); row.className = "vrow";
+      const head = el2("div"); head.className = "vrow-head";
+      const vn = el2("span"); vn.className = "vrow-name"; vn.textContent = GSHORT[v];
+      const val = el2("span"); val.className = "vrow-value"; val.textContent = ms(total);
+      const se = seV(v, "cpuTotal", CFG, k);
+      if (se != null) { const e = el2("span"); e.className = "sc-pm"; e.textContent = pm(se, ms, "0.1").trim(); val.appendChild(e); }
+      const unit = el2("span"); unit.className = "sc-unit"; unit.textContent = "ms/s"; val.appendChild(unit);
+      head.append(vn, val);
+      if (v !== PREV) {
+        const p = less(at(PREV).cpuTotal[CFG][k], total);
+        const d = el2("span"); d.className = "vrow-delta";
+        const b = el2("b"); b.textContent = pc1(Math.abs(p)) + (p >= 0 ? " less" : " more");
+        d.append(b, inside(p) ? ", inside the drift" : resolved(p) ? ", well outside the drift" : ", near the drift");
+        head.appendChild(d);
+      }
+      const track = el2("div"); track.className = "splitbar-track";
+      const bar = el2("div"); bar.className = "splitbar";
+      bar.style.width = (total / max * 100).toFixed(2) + "%";
+      bar.setAttribute("role", "img");
+      bar.setAttribute("aria-label", GSHORT[v] + ": " + CAUSES.map(z => CAUSE_LABEL[z] + " " + pc(c[z] / total * 100)).join(", "));
+      CAUSES.forEach(z => {
+        const seg = el2("span"); seg.style.flex = String(Math.max(c[z] / total * 100, 0.4)); seg.style.background = causeFill(COLOR[k], z);
+        seg.title = CAUSE_LABEL[z] + ": " + ms(c[z]) + " ms/s";
+        bar.appendChild(seg);
+      });
+      track.appendChild(bar);
+      row.append(head, track);
+      card.appendChild(row);
+    });
+    /* Each cause's share of the suite's work, by version. */
+    const t = el2("table"); t.className = "share";
+    const thead = el2("thead"), htr = el2("tr");
+    ["Share of the work", ...GV.map(v => GHEAD[v])].forEach(h => { const th = el2("th"); th.setAttribute("scope", "col"); th.textContent = h; htr.appendChild(th); });
+    thead.appendChild(htr); t.appendChild(thead);
+    const tb = el2("tbody");
+    CAUSES.forEach(z => {
+      const tr = el2("tr");
+      const th = el2("th"); th.setAttribute("scope", "row");
+      const chip = el2("span"); chip.className = "chip"; chip.style.background = causeFill(COLOR[k], z);
+      th.append(chip, CAUSE_SHORT[z]);
+      tr.appendChild(th);
+      GV.forEach(v => { const td = el2("td"); td.textContent = pc(czv(v, "cpu", CFG, k)[z] / at(v).cpuTotal[CFG][k] * 100); tr.appendChild(td); });
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+    const wrap = el2("div"); wrap.className = "table-wrap"; wrap.appendChild(t);
+    card.appendChild(wrap);
+    /* What drives it: how often the suite makes GearSwap work, which no
+       version changes. */
+    const n = cnt(CFG, k);
+    const drive = el2("div"); drive.className = "sc-drive";
+    const dh = el2("div"); dh.className = "sc-drive-h"; dh.textContent = "What drives it";
+    const line = (...parts) => {
+      const d = el2("div");
+      parts.forEach(p => { if (typeof p === "string") d.append(p); else { const b = el2("b"); b.textContent = p.b; d.appendChild(b); } });
+      drive.appendChild(d);
+    };
+    drive.appendChild(dh);
+    line(B(perMin(n.gs_refresh_full + n.gs_refresh_short)), " GearSwap refreshes and ", B(perMin(n.gs_event_empty + n.gs_event_proposed)), " walks a minute across the six clients, under every version.");
+    line("GearSwap's own work is ", B(list(GV.map(v => pc1(gsShareV(v, CFG, k))))), " of it, version by version.");
+    card.appendChild(drive);
+    const foot = el2("div"); foot.className = "sc-foot";
+    const f1 = el2("span"); f1.append("own code "); const b1 = el2("b");
+    b1.textContent = usf(czv(PREV, "cpu", CFG, k).own) + pm(seV(PREV, "causes", CFG, k, "own"), usf, "0.1") + " µs/s"; f1.appendChild(b1);
+    f1.append(" under every version");
+    const f2 = el2("span"); f2.append("churn "); const b2 = el2("b");
+    b2.textContent = GV.map(v => mb(at(v).allocTotal[CFG][k])).join(" · ") + " MB/s"; f2.appendChild(b2);
+    foot.append(f1, f2);
+    card.appendChild(foot);
+    host.appendChild(card);
+  });
+  put("glance-writers", B("GearswapRevised's figures leave out GearSwap's item-cache writers"), ", as every version's do. In Rahvin's sessions they took " +
+    pc1(FIG.dWsLo * 100) + " to " + pc1(FIG.dWsHi * 100) + " of GearSwap's own work under GearswapRevised, against " +
+    pc1(FIG.newWsLo * 100) + " to " + pc1(FIG.newWsHi * 100) + " under 0.940 (new).");
+
+  const ul = document.getElementById("glance-takeaways");
+  const item = (...parts) => { const li = el2("li"); ul.appendChild(li); li.id = "tk-" + ul.children.length; put(li.id, ...parts); };
+  const cut = v => COLS.map(c => less(at(PREV).cpuTotal[c.cfg][c.k], at(v).cpuTotal[c.cfg][c.k]));
+  const dCut = cut(DD), nCut = cut(NEW);
+  item(B("GearswapRevised cuts every suite's engine CPU by " + pcSpan(dCut, pc1)), " against 0.940 (previous), in both states, well outside the drift of up to " + pc(DRIFT) +
+    " between the counting sessions. 0.940 (new) reads " + pcSpan(nCut, pc1) + " lower, inside that drift, so its difference is not resolved.");
+  const cheapest = cheapUnder[0];
+  if (cheapUnder.every(x => x === cheapest)) {
+    const others = ORDER.filter(k => k !== cheapest);
+    item(B(LEGEND[cheapest] + " is the cheapest suite under every version."), " In the moderate state " +
+      list(others.map(k => LEGEND[k] + " costs " + list(GV.map(v => times(at(v).cpuTotal[CFG][k], at(v).cpuTotal[CFG][cheapest]))) + " times as much")) +
+      ", under 0.940 (previous), 0.940 (new) and GearswapRevised in turn.");
+  } else {
+    item(B("The cheapest suite changes with the version:"), " " + list(GV.map((v, i) => LEGEND[cheapUnder[i]] + " under " + GSHORT[v])) + ".");
+  }
+  const share = v => V.flatMap(k => CFGS.map(cfg => gsShareV(v, cfg, k)));
+  const both940 = share(PREV).concat(share(NEW));
+  const ownShare = v => V.flatMap(k => CFGS.map(cfg => czv(v, "cpu", cfg, k).own / at(v).cpuTotal[cfg][k] * 100));
+  item(B("GearSwap's own work is most of every suite's cost under every version:"), " " + pcSpan(both940, pc1) + " under the two 0.940s and " + pcSpan(share(DD), pc1) +
+    " under GearswapRevised. The suites' own code is the same under every version, so its share grows as GearSwap's shrinks, to " + pc1(hi(ownShare(DD))) +
+    " of a column under GearswapRevised at most, against " + pc1(hi(ownShare(PREV))) + " under 0.940 (previous).");
+  const aCut = v => COLS.map(c => less(at(PREV).allocTotal[c.cfg][c.k], at(v).allocTotal[c.cfg][c.k]));
+  item(B("Memory churn falls with GearswapRevised too:"), " " + pcSpan(aCut(DD), pc1) + " less than 0.940 (previous) on every suite. Its refresh no longer builds every bag's list anew, and its walk allocates less as well. 0.940 (new) allocates within " +
+    pc1(hi(aCut(NEW).map(Math.abs))) + " of 0.940 (previous).");
+  const heldShare = V.map(k => dExtraKb() / sixBoxes(k) * 100);
+  const heldShareGame = V.map(k => dExtraGameKb() / sixBoxes(k) * 100);
+  item(B("Memory held is where GearswapRevised costs more:"), " it keeps about " + kfmt(dExtraGameKb()) + " to " + kfmt(dExtraKb()) +
+    " KB more than 0.940 for the six clients, on every suite alike, about " + pc1(lo(heldShareGame)) + " to " + pc1(hi(heldShare)) +
+    " of a suite's six boxes. The suites' own figures are the same under every version.");
+})();
+
+/* A bar per version in each suite's group, the suite's hue on every bar, the
+   groups the dearest first. */
+function byVersion(host, spec) {
+  stackedRows(host, {
+    title: spec.title, better: "lower", noLegend: true,
+    unit: "ms/s", totalUnit: "ms/s", axisLabel: "milliseconds of work per second of fighting, six clients",
+    valueFmt: v => ms(v), tickFmt: v => tickText(v / 1000),
+    aria: "Three groups, one per suite, each with a bar per GearSwap version.",
+    parts: [{ id: "w", label: spec.part, swatch: "var(--ink-2)", inside: false }],
+    rows: ORDER.flatMap(k => GV.map(v => ({ group: LEGEND[k], label: GSHORT[v], values: { w: spec.value(v, k) }, fill: () => COLOR[k] }))),
+  });
+}
+function priceRows(fields) {
+  return JOBS.map(j => [JOBNAME[j] + " · " + DV.fps[j] + " fps", ...fields.flatMap(f => GV.map(v => {
+    const P = at(v).gsPrice[j];
+    return P[f.us] == null ? "—" : fmt(P[f.us], 0) + " (" + fmt(P[f.kb], f.dp) + ")";
+  }))]);
+}
+
+/* Cause 1: GearSwap's refresh ------------------------------------------------- */
+(function refresh() {
+  const P = v => at(v).gsPrice;
+  const full = v => JOBS.map(j => P(v)[j].fullUs);
+  put("refresh-versions", " How much of that work is the bags is what the versions change. ",
+    B("Under 0.940 (previous)"), " every refresh rebuilds every bag the character owns, item by item, whether anything changed or not. In Rahvin's own timing in the game the bag rebuild was " +
+    pc(FIG.prevBagLo * 100) + " to " + pc(FIG.prevBagHi * 100) + " of a full refresh. ",
+    B("0.940 (new)"), " rebuilds the same way, with the rebuild Windower/Lua #2567 refactored. In Rahvin's counting session on it the bag rebuild was " +
+    pc(FIG.newBagLo * 100) + " to " + pc(FIG.newBagHi * 100) + " of a full refresh. ",
+    B("GearswapRevised"), " keeps each bag's item list between refreshes instead: a bag nothing wrote to is not walked at all, a written row is patched in place, and a bag is rebuilt only when its names may have changed. In Rahvin's counting session on it the bag work was " +
+    pc1(FIG.dBagLo * 100) + " to " + pc1(FIG.dBagHi * 100) + " of a full refresh, so the rest of the refresh, which GearswapRevised leaves as it was, is nearly all of it.");
+  const sf = v => JOBS.map(j => P(v)[j].shortUs / P(v)[j].fullUs);
+  const near = v => lo(sf(v)) > 0.9 && hi(sf(v)) < 1.1;
+  put("refresh-sizes", "Every version runs these rules alike. " +
+    (near(PREV) && near(NEW) ? "Under either 0.940 a short refresh still rebuilds every bag, so it costs about what a full one does. " :
+      "A short refresh is priced at " + pcSpan(sf(PREV).map(x => x * 100)) + " of a full one under 0.940 (previous) and " + pcSpan(sf(NEW).map(x => x * 100)) + " under 0.940 (new). ") +
+    "Under GearswapRevised, with the bag lists kept, a short refresh is priced at " + pcSpan(sf(DD).map(x => x * 100)) + " of a full one.");
+  /* The bags' item counts beside the prices, while the dearest and cheapest
+     characters are the fullest and emptiest. */
+  const items = v => DV.bagItems[v];
+  const follows = v => argmax(JOBS, j => P(v)[j].fullUs) === argmax(JOBS, j => items(v)[j]) && argmin(JOBS, j => P(v)[j].fullUs) === argmin(JOBS, j => items(v)[j]);
+  const round10 = x => kfmt(Math.round(x / 10) * 10);
+  const kb = v => JOBS.map(j => P(v)[j].fullKb);
+  const fewest = argmin(JOBS, j => items(PREV)[j]), most = argmax(JOBS, j => items(PREV)[j]);
+  put("refresh-price", "The prices are Rahvin's own: each character's mean per call over his counting session on each version, on his six characters. A full refresh costs " +
+    list(GV.map(v => msSpan(full(v), 2) + " under " + GSHORT[v])) + ". " +
+    (follows(PREV) && follows(NEW) ? "Under either 0.940 the price follows what a character carries. When Rahvin timed 0.940 (previous), the " + JOBNAME[fewest] +
+      "'s bags held the fewest items, about " + round10(items(PREV)[fewest]) + ", and the " + JOBNAME[most] + "'s the most, about " + round10(items(PREV)[most]) + ". " : "") +
+    "Under GearswapRevised it hardly does: its prices were timed on characters carrying about " + round10(lo(JOBS.map(j => items(DD)[j]))) + " to " +
+    round10(hi(JOBS.map(j => items(DD)[j]))) + " items. In the sessions' own means 0.940 (new)'s full refresh reads " + pc1(FIG.newLo * 100) + " to " + pc1(FIG.newHi * 100) +
+    " below 0.940 (previous)'s, inside the drift of up to " + pc(DRIFT) + " between sessions, so it is not resolved. GearswapRevised's reads " + pc1(FIG.dLo * 100) + " to " +
+    pc1(FIG.dHi * 100) + " below, well outside it. A full refresh also allocates " +
+    list(GV.map(v => kfmt(lo(kb(v))) + " to " + kfmt(hi(kb(v))) + " KB under " + GSHORT[v])) + ", which the collector must later reclaim.");
+  const c = k => cnt(CFG, k);
+  put("refresh-why", "The suites set how often GearSwap refreshes, and the version sets what each refresh costs, so the counts below are the same under every version. ",
+    B("Mirdain 1.5.12"), " registers its action handler through GearSwap's wrapped registration, so every action packet that reaches a client gets a refresh unless one ran in the last 0.05 seconds: " +
+    perMin(c(M).gs_refresh_short) + " short and " + perMin(c(M).gs_refresh_full) + " full refreshes a minute across the six clients, with " + perMin(c(M).gs_refresh_throttled) + " more calls skipped. ",
+    B("Selindrile"), " registers its action handlers raw, but calls GearSwap's full refresh itself, from Selindrile's automation tick and at each step of the character's own actions: " +
+    perMin(c(S).gs_refresh_full) + " full refreshes a minute, " + pc(c(S).gs_refresh_full / (c(S).gs_refresh_full + c(S).gs_refresh_short) * 100) + " of all Selindrile's refreshes. ",
+    B("Rahvin GS 2.1"), " takes action packets raw. Its refreshes are GearSwap's own for the character's own actions, buffs and status changes, and for the handlers it wraps: " +
+    perMin(c(R).gs_refresh_full) + " full and " + perMin(c(R).gs_refresh_short) + " short a minute.");
+  put("refresh-priced-cap", "GearSwap's refresh, priced at each version's in-game figures, for the whole box per second of fighting, moderate state. Each group is one suite, and each bar one version. " +
+    versusText(x => czv(x.v, "cpu", x.cfg, x.k).refresh, "refresh"));
+  byVersion(document.getElementById("c-refresh-priced"), {
+    title: "GearSwap's refresh, priced, whole box (moderate state)", part: "GearSwap's refresh",
+    value: (v, k) => czv(v, "cpu", CFG, k).refresh,
+  });
+  const order = byLargest(V, k => c(k).gs_refresh_full + c(k).gs_refresh_short + c(k).gs_refresh_throttled);
+  stackedRows(document.getElementById("c-refresh"), {
+    title: "GearSwap refreshes a minute, six clients (moderate state, every version)", better: "lower",
+    unit: "a minute", axisLabel: "refreshes and skipped calls a minute, six clients",
+    valueFmt: v => perMin(v), tickFmt: v => tickText(v),
+    aria: "One bar per suite, split into full refreshes, short refreshes and skipped calls.",
+    parts: [
+      { id: "full", label: "Full refresh", swatch: "var(--ink-2)", insideInk: inkOn("refresh"), shade: k => COLOR[k] },
+      { id: "short", label: "Short refresh", swatch: "color-mix(in srgb, var(--ink-2) 52%, var(--surface))", insideInk: inkOn("event"), shade: k => causeFill(COLOR[k], "event") },
+      { id: "skipped", label: "Skipped, inside 0.05 s", swatch: "var(--ink-3)", hollow: true, inside: false, shade: k => COLOR[k] },
+    ],
+    rows: order.map(k => ({ label: LEGEND[k], key: k,
+      values: { full: c(k).gs_refresh_full, short: c(k).gs_refresh_short, skipped: c(k).gs_refresh_throttled },
+      fill: id => id === "full" ? COLOR[k] : id === "short" ? causeFill(COLOR[k], "event") : "var(--surface)",
+      stroke: id => id === "skipped" ? COLOR[k] : null })),
+  });
+  table(document.getElementById("t-refresh"), {
+    caption: "GearSwap's refreshes a minute across the six clients, the same under every version, and their priced cost under each",
+    cols: ["", ...COLS.map(x => LEGEND[x.k] + " " + x.cfg)],
+    rows: [["Full refreshes a minute", ...COLS.map(x => fmt(cnt(x.cfg, x.k).gs_refresh_full, 1))],
+           ["Short refreshes a minute", ...COLS.map(x => fmt(cnt(x.cfg, x.k).gs_refresh_short, 1))],
+           ["Skipped calls a minute", ...COLS.map(x => fmt(cnt(x.cfg, x.k).gs_refresh_throttled, 1))],
+           ...GV.map(v => ["Priced, µs per second · " + GSHORT[v], ...COLS.map(x => fmt(czv(v, "cpu", x.cfg, x.k).refresh, 1) + pm(seV(v, "causes", x.cfg, x.k, "refresh"), fmt1, "0.1"))]),
+           ...GV.map(v => ["Priced, KB per second · " + GSHORT[v], ...COLS.map(x => fmt(czv(v, "alloc", x.cfg, x.k).refresh, 1))])],
+  });
+  table(document.getElementById("t-refresh-prices"), {
+    caption: "GearSwap's refresh price per call on each character under each version, in µs, from Rahvin's own play; KB allocated in brackets",
+    cols: ["Character", ...GV.map(v => "Full · " + GSHORT[v]), ...GV.map(v => "Short · " + GSHORT[v])],
+    rows: priceRows([{ us: "fullUs", kb: "fullKb", dp: 0 }, { us: "shortUs", kb: "shortKb", dp: 0 }]),
+  });
+})();
+
+/* Cause 2: GearSwap's walk around every event ---------------------------------- */
+(function events() {
+  const P = v => at(v).gsPrice;
+  const walkUp = COLS.map(x => -less(czv(PREV, "cpu", x.cfg, x.k).event, czv(NEW, "cpu", x.cfg, x.k).event));
+  put("event-drift", "So its prices show the drift between sessions on their own: priced, 0.940 (new)'s walk reads " +
+    (lo(walkUp) >= 0 ? pcSpan(walkUp, pc1) + " more than" : "between " + pc1(lo(walkUp)) + " and " + pc1(hi(walkUp)) + " against") +
+    " 0.940 (previous)'s, inside the drift of up to " + pc(DRIFT) + ".");
+  const rng = (v, f) => msSpan(JOBS.map(j => P(v)[j][f]).filter(x => x != null), 2);
+  /* Each character's price for each kind of event under a version against
+     0.940 (previous)'s, "how much less" in percent. */
+  const KIND_PRICE = { emptyUs: "nothing-proposed price", proposedUs: "re-wearing price", changeUs: "changing price" };
+  const perEventAt = v => JOBS.flatMap(j => Object.keys(KIND_PRICE).filter(f => P(PREV)[j][f] != null && P(v)[j][f] != null)
+    .map(f => ({ j: j, f: f, p: less(P(PREV)[j][f], P(v)[j][f]) })));
+  const perEvent = v => perEventAt(v).map(x => x.p);
+  /* The walk is the same code in both 0.940s, so a price beyond the drift
+     between them comes from the sessions, not the version: named, not hidden. */
+  const beyond = perEventAt(NEW).filter(x => !inside(x.p));
+  const byJob = {};
+  beyond.forEach(x => { (byJob[x.j] = byJob[x.j] || []).push(x); });
+  const beyondText = beyond.length ? " The walk is the same code in both 0.940s, so what lies beyond the drift comes from the sessions, not the version: " +
+    list(Object.keys(byJob).map(j => {
+      const xs = byJob[j];
+      return "the " + JOBNAME[j] + "'s " + list(xs.map(x => KIND_PRICE[x.f].replace(" price", ""))) + (xs.length > 1 ? " prices, " : " price, ") +
+        list(xs.map(x => pc1(Math.abs(x.p)))) + (xs.every(x => x.p < 0) ? " above" : xs.every(x => x.p > 0) ? " below" : " apart");
+    })) + ". What moved " + (beyond.length > 1 ? "them" : "it") + " was not measured." : "";
+  put("event-price", "On Rahvin's characters an event that proposed nothing costs " + list(GV.map(v => rng(v, "emptyUs") + " under " + GSHORT[v])) +
+    ". One that re-wears gear already on costs " + list(GV.map(v => rng(v, "proposedUs") + " under " + GSHORT[v])) +
+    ". One that changes gear costs " + list(GV.map(v => rng(v, "changeUs") + " under " + GSHORT[v])) +
+    ". Under the 0.940s each changing slot is matched row by row until its item is found. Under GearswapRevised the index takes each slot straight to the rows that hold its item. " +
+    "Character by character and kind by kind, 0.940 (new)'s prices read " + moveText(perEvent(NEW)) + " 0.940 (previous)'s, " + driftText(perEvent(NEW)) +
+    "." + beyondText + " GearswapRevised's read " + moveText(perEvent(DD)) + " 0.940 (previous)'s, " + driftText(perEvent(DD)) + ".");
+  const c = k => cnt(CFG, k);
+  const ev = k => c(k).gs_event_empty + c(k).gs_event_proposed;
+  put("event-why", "GearSwap runs its walk for every event it runs a handler for, so the counts follow the refresh's, and they are the same under every version. ",
+    B("Mirdain 1.5.12"), "'s wrapped action handler makes every action packet an event, and " +
+    (c(M).gs_event_proposed / ev(M) < 0.1 ? "almost none proposes gear" : c(M).gs_event_proposed / ev(M) < 0.5 ? "most propose no gear" : "some propose gear") + ": " +
+    perMin(c(M).gs_event_empty) + " events a minute proposing nothing, against " + perMin(c(M).gs_event_proposed) + " proposing gear. ",
+    B("Rahvin GS 2.1"), " runs " + perMin(ev(R)) + " events a minute: the characters' own actions, buffs, commands and state changes. ",
+    B("Selindrile"), " runs " + perMin(ev(S)) + ", among them every gs c command Selindrile's handlers send, each of which runs the walk. On every suite alike GearSwap also runs the walk for each buff an aura re-applies, " +
+    perMin(c(R).gs_buff_refresh) + " a minute across the six clients.");
+  put("events-priced-cap", "GearSwap's walk around every event, priced at each version's in-game figures, for the whole box per second of fighting, moderate state. Each group is one suite, and each bar one version. " +
+    versusText(x => czv(x.v, "cpu", x.cfg, x.k).event, "walk"));
+  const ratios = v => JOBS.filter(j => P(v)[j].changeUs != null).map(j => P(v)[j].changeUs / P(v)[j].emptyUs);
+  put("events-cap", "GearSwap events a minute across the six clients, moderate state, by what the handler proposed, the same under every version. On each character an event that changes gear costs " +
+    list(GV.map((v, i) => fmt(lo(ratios(v)), 1) + " to " + fmt(hi(ratios(v)), 1) + " times" + (i === 0 ? " one that proposed nothing" : "") + " under " + GSHORT[v])) + ".");
+  byVersion(document.getElementById("c-events-priced"), {
+    title: "GearSwap's walk around every event, priced, whole box (moderate state)", part: "GearSwap's walk",
+    value: (v, k) => czv(v, "cpu", CFG, k).event,
+  });
+  const order = byLargest(V, ev);
+  stackedRows(document.getElementById("c-events"), {
+    title: "GearSwap events a minute, six clients (moderate state, every version)", better: "lower",
+    unit: "a minute", axisLabel: "events a minute, six clients",
+    valueFmt: v => perMin(v), tickFmt: v => tickText(v),
+    aria: "One bar per suite, split by what each event's handler proposed.",
+    parts: [
+      { id: "change", label: "Changes gear", swatch: "var(--ink-2)", insideInk: inkOn("refresh"), shade: k => COLOR[k] },
+      { id: "rewear", label: "Re-wears gear", swatch: "color-mix(in srgb, var(--ink-2) 45%, var(--ink))", insideInk: inkOn("own"), shade: k => causeFill(COLOR[k], "own") },
+      { id: "empty", label: "Proposes nothing", swatch: "color-mix(in srgb, var(--ink-2) 52%, var(--surface))", insideInk: inkOn("event"), shade: k => causeFill(COLOR[k], "event") },
+    ],
+    rows: order.map(k => ({ label: LEGEND[k], key: k,
+      values: { change: c(k).gs_event_change, rewear: c(k).gs_event_proposed - c(k).gs_event_change, empty: c(k).gs_event_empty },
+      fill: id => id === "change" ? COLOR[k] : id === "rewear" ? causeFill(COLOR[k], "own") : causeFill(COLOR[k], "event") })),
+  });
+  table(document.getElementById("t-events"), {
+    caption: "GearSwap's events a minute across the six clients, the same under every version, and the walk's priced cost under each",
+    cols: ["", ...COLS.map(x => LEGEND[x.k] + " " + x.cfg)],
+    rows: [["Proposing nothing", ...COLS.map(x => fmt(cnt(x.cfg, x.k).gs_event_empty, 1))],
+           ["Re-wearing gear", ...COLS.map(x => fmt(cnt(x.cfg, x.k).gs_event_proposed - cnt(x.cfg, x.k).gs_event_change, 1))],
+           ["Changing gear", ...COLS.map(x => fmt(cnt(x.cfg, x.k).gs_event_change, 1))],
+           ["Of them, buffs an aura re-applied", ...COLS.map(x => fmt(cnt(x.cfg, x.k).gs_buff_refresh, 1))],
+           ...GV.map(v => ["Priced, µs per second · " + GSHORT[v], ...COLS.map(x => fmt(czv(v, "cpu", x.cfg, x.k).event, 1) + pm(seV(v, "causes", x.cfg, x.k, "event"), fmt1, "0.1"))]),
+           ...GV.map(v => ["Priced, KB per second · " + GSHORT[v], ...COLS.map(x => fmt(czv(v, "alloc", x.cfg, x.k).event, 1))])],
+  });
+  table(document.getElementById("t-event-prices"), {
+    caption: "GearSwap's walk price per event on each character under each version, in µs, from Rahvin's own play; KB allocated in brackets",
+    cols: ["Character", ...GV.map(v => "Nothing proposed · " + GSHORT[v]), ...GV.map(v => "Re-wearing · " + GSHORT[v]), ...GV.map(v => "Changing · " + GSHORT[v])],
+    rows: priceRows([{ us: "emptyUs", kb: "emptyKb", dp: 1 }, { us: "proposedUs", kb: "proposedKb", dp: 1 }, { us: "changeUs", kb: "changeKb", dp: 1 }]),
+  });
+})();
+
+/* Per character ------------------------------------------------------------------ */
+(function jobs() {
+  const tot = (v, j, k) => at(v).cpuJob[CFG][j][k];
+  const seJ = (v, j, k) => seV(v, "cpuJob", CFG, j, k) || 0;
+  /* The characters a version's figures cannot tell from the costliest on one
+     suite: within twice the two figures' combined standard error of it. */
+  const tops = (v, k) => {
+    const m = argmax(JOBS, j => tot(v, j, k));
+    return JOBS.filter(j => tot(v, m, k) - tot(v, j, k) <= 2 * Math.hypot(seJ(v, m, k), seJ(v, j, k)));
+  };
+  /* The costliest client under the first version on the dearest suite, and
+     where it stands under each version, said once for a run that agrees. */
+  const lead = argmax(JOBS, j => tot(PREV, j, ORDER[0]));
+  const dearText = v => {
+    const t = ORDER.map(k => tops(v, k));
+    if (t.every(x => x.length === 1 && x[0] === lead)) return "is the costliest client on every suite";
+    if (t.every(x => x.indexOf(lead) >= 0)) return "is the costliest client on every suite, or within twice the measurement's error of it";
+    if (t.every(x => x.indexOf(lead) < 0)) return "is the costliest client on no suite";
+    return "is the costliest client on " + list(ORDER.filter((k, i) => t[i].indexOf(lead) >= 0).map(k => LEGEND[k])) + " alone";
+  };
+  const runs = [];
+  GV.forEach(v => {
+    const t = dearText(v), last = runs[runs.length - 1];
+    if (last && last.text === t) last.vs.push(v); else runs.push({ text: t, vs: [v] });
+  });
+  const clientMove = v => JOBS.flatMap(j => V.map(k => less(tot(PREV, j, k), tot(v, j, k))));
+  const all = v => JOBS.flatMap(j => V.map(k => tot(v, j, k)));
+  const under = vs => vs.length === GV.length ? "under every version" : vs.length === 2 && vs[0] === PREV && vs[1] === NEW ? "under both 0.940s" : "under " + list(vs.map(v => GSHORT[v]));
+  const P = at(PREV).gsPrice, PD = at(DD).gsPrice;
+  const dearJ = argmax(JOBS, j => P[j].fullUs), cheapJ = argmin(JOBS, j => P[j].fullUs);
+  /* The widest ratio between two characters on one suite, against the ratio
+     between the dearest and the cheapest suite's whole box, as the report
+     weighs them, under each version. */
+  const within = v => hi(V.map(k => hi(JOBS.map(j => tot(v, j, k))) / lo(JOBS.map(j => tot(v, j, k)))));
+  const between = v => hi(V.map(k => at(v).cpuTotal[CFG][k])) / lo(V.map(k => at(v).cpuTotal[CFG][k]));
+  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+  put("job-text", runs.map(r => cap(under(r.vs)) + " the " + JOBNAME[lead] + " " + r.text + ". ").join("") +
+    "Under 0.940 (previous) a full refresh costs the " + JOBNAME[dearJ] + " " + fmt(P[dearJ].fullUs / 1000, 2) + " ms against " + fmt(P[cheapJ].fullUs / 1000, 2) +
+    " ms for the " + JOBNAME[cheapJ] + ", since it rebuilds every bag. Under GearswapRevised the same two cost " + fmt(PD[dearJ].fullUs / 1000, 2) + " and " + fmt(PD[cheapJ].fullUs / 1000, 2) +
+    " ms. Every client of every suite runs " + ms(lo(all(PREV))) + " to " + ms(hi(all(PREV))) + " ms/s under 0.940 (previous) and " +
+    ms(lo(all(DD))) + " to " + ms(hi(all(DD))) + " ms/s under GearswapRevised. Client by client, 0.940 (new) reads " + moveText(clientMove(NEW)) +
+    " 0.940 (previous), " + driftText(clientMove(NEW)) + ". GearswapRevised reads " + moveText(clientMove(DD)) + " it, " + driftText(clientMove(DD)) + "." +
+    (GV.every(v => within(v) * 2 < between(v)) ? " Under every version the characters differ far less than the suites do." :
+      GV.every(v => within(v) < between(v)) ? " Under every version the characters differ less than the suites do." : ""));
+  const max = niceMax(Math.max(...GV.flatMap(v => JOBS.flatMap(j => V.map(k => tot(v, j, k))))) * 1.02);
+  const host = document.getElementById("c-jobs");
+  /* Every chart's box is laid out before any chart is drawn, so each is drawn
+     to its own column's width. */
+  const fits = {};
+  GV.forEach(v => {
+    const box = el2("figure");
+    const h = el2("h3"); h.textContent = GNAME[v];
+    const frame = el2("div"); frame.className = "chart-frame";
+    const fit = el2("div"); fit.className = "fit"; frame.appendChild(fit);
+    box.append(h, frame);
+    host.appendChild(box);
+    fits[v] = fit;
+  });
+  GV.forEach(v => {
+    const fit = fits[v];
+    const rows = [];
+    JOBS.forEach(j => {
+      byLargest(V, k => tot(PREV, j, k)).forEach(k => rows.push({ group: JOBNAME[j] + " · " + DV.fps[j] + " fps", label: SHORT[k], key: k,
+        values: at(v).causesJob.cpu[CFG][j][k], fill: z => causeFill(COLOR[k], z) }));
+    });
+    stackedRows(fit, {
+      title: "Engine CPU per client, by cause, moderate state, under " + GSHORT[v], better: "lower", max: max,
+      unit: "ms/s", totalUnit: "", axisLabel: "milliseconds of work per second of fighting, one client",
+      valueFmt: x => ms(x), tickFmt: x => tickText(x / 1000),
+      aria: "Six groups, one per character, each with a bar per suite split by cause, under " + GNAME[v] + ".",
+      parts: CAUSES.map(z => ({ id: z, label: CAUSE_LABEL[z], swatch: causeFill("var(--ink-2)", z), shade: k => causeFill(COLOR[k], z), inside: false })),
+      rows: rows,
+    });
+  });
+  table(document.getElementById("t-jobs"), {
+    caption: "Engine CPU per client, µs per second of fighting, moderate state, under each version",
+    cols: ["Client", ...ORDER.flatMap(k => GV.map(v => LEGEND[k] + " · " + GSHORT[v]))],
+    rows: JOBS.map(j => [JOBNAME[j] + " · " + DV.fps[j] + " fps", ...ORDER.flatMap(k => GV.map(v => fmt(tot(v, j, k), 1) + pm(seV(v, "cpuJob", CFG, j, k), fmt1, "0.1")))]),
+    foot: ["All six", ...ORDER.flatMap(k => GV.map(v => fmt(at(v).cpuTotal[CFG][k], 1) + pm(seV(v, "cpuTotal", CFG, k), fmt1, "0.1")))],
+  });
+})();
+
+/* Memory held as boxes are added ---------------------------------------------------- */
+(function memory() {
+  const H = DV.held, DM = DV.dmem;
+  const xs = [1, 2, 3, 4, 5, 6];
+  const cost = k => xs.map(n => H.first[k] + (n - 1) * H.warm[k]);
+  lineChart(document.getElementById("c-memline"), {
+    title: "Memory kept from one box to six (moderate state, every version)", xlabel: "boxes running the suite", ylabel: "KB retained, all boxes together",
+    series: V, unit: "KB", xs: xs, xword: "box", xwords: "boxes", better: "lower",
+    aria: "One line per suite, the same under every version of GearSwap; where lines cross, the ranking changes.",
+    lines: V.map(k => ({ key: k, ys: cost(k) })),
+  });
+  const c = {}; V.forEach(k => { c[k] = cost(k); });
+  let crossings = 0;
+  V.forEach(a => V.forEach(b => { if (a < b) for (let i = 1; i < xs.length; i++) if ((c[a][i] - c[b][i]) * (c[a][0] - c[b][0]) < 0) { crossings++; break; } }));
+  const order = byLargest(V, k => H.warm[k]).reverse();
+  const shared = Math.max(...V.map(k => H.sharedOnce[k] || 0));
+  put("mem-text", "Each box that loads a suite keeps its own copy of what the suite loads: " + list(order.map(k => kfmt(H.warm[k]) + " KB a box on " + LEGEND[k])) +
+    ". These figures are the same under every version of GearSwap, because GearSwap's own tables are not in them. The first box to load a suite keeps at most " +
+    fmt(Math.max(shared, 0), 1) + " KB of tables the later boxes find already loaded" +
+    (shared < 0.05 * Math.min(...V.map(k => H.warm[k])) ? ", so the per-box figure is nearly the whole story. " : ". ") +
+    (crossings === 0 ? "The lines never cross: the order is the same from one box to six, " : "Where the lines cross the order changes, ") +
+    "and at six boxes the suites keep " + list(order.map(k => kfmt(c[k][5]) + " KB on " + LEGEND[k])) + "." +
+    (argmax(V, k => H.warm[k]) === R ? " Memory held is where Rahvin GS 2.1 costs the most of the three." : ""));
+  const game = JOBS.map(j => DM.game[j]), off = JOBS.map(j => DM.offline[j]);
+  const gameRow = game.map(g => g.index_bytes_per_row), offRow = off.map(o => o.index_bytes_per_row);
+  put("mem-d", "Beside each bag's item list, which both 0.940s keep too, GearswapRevised keeps a record for every bag, eighteen in all: three tables that follow each slot, and a list of the slots written since the last refresh. In Rahvin's benchmark on GearswapRevised those records came to " +
+    fmt(lo(game.map(g => g.records_kb)), 1) + " to " + fmt(hi(game.map(g => g.records_kb)), 1) + " KB a character, " + kfmt(DM.gameBox.records_kb) +
+    " KB for the six clients. It also keeps an index of the nine equippable bags by item name. Built outside the game over rows of real items at each character's measured bag counts, the index keeps " +
+    fmt(lo(off.map(o => o.index_kb)), 1) + " to " + fmt(hi(off.map(o => o.index_kb)), 1) + " KB a client, " + kfmt(DM.offlineBox.index_kb) + " KB for the six. " +
+    "In the game the benchmark rebuilt one bag's index at " + kfmt(lo(gameRow)) + " to " + kfmt(hi(gameRow)) + " bytes a row, against " + kfmt(lo(offRow)) + " to " +
+    kfmt(hi(offRow)) + " outside it, since the game's Lua is a 32-bit build whose tables are smaller. At the game's cost a row the index comes to about " +
+    kfmt(DM.gameBox.index_kb_est) + " KB for the six. Together GearswapRevised keeps about " + kfmt(dExtraGameKb()) + " KB more than 0.940 for the six clients at the game's costs, " +
+    kfmt(dExtraKb()) + " KB with the index as built outside the game, on every suite alike: " +
+    list(ORDER.map((k, i) => pc1(dExtraGameKb() / sixBoxes(k) * 100) + " to " + pc1(dExtraKb() / sixBoxes(k) * 100) + " of " + LEGEND[k] + "'s" + (i === 0 ? " six boxes" : ""))) +
+    ". The suites' figures were measured outside the game too, where tables are larger, so these shares are close, not exact. None of it is in the chart.");
+  table(document.getElementById("t-mem"), {
+    caption: "KB each client retained at boot, the same under every version. The Bard boots first in every column; it carries at most " + fmt(Math.max(shared, 0), 1) +
+      " KB of tables the later boxes share, so its row compares with the rest",
+    cols: ["Client", ...ORDER.map(k => LEGEND[k])],
+    rows: JOBS.map(j => [JOBNAME[j], ...ORDER.map(k => cell(H.job[j][k], 0))]),
+  });
+  table(document.getElementById("t-dmem"), {
+    caption: "What GearswapRevised keeps beyond 0.940 on each client, KB: the records from Rahvin's benchmark in the game, over all eighteen bags; the index built outside the game over the equippable bags' rows, and at the game's cost a row over the same rows",
+    cols: ["Client", "Records, in the game", "Rows indexed, outside the game", "Index, outside the game", "Index bytes a row, outside", "Index bytes a row, in the game", "Index at the game's cost", "Together at the game's costs"],
+    rows: JOBS.map(j => [JOBNAME[j], fmt(DM.game[j].records_kb, 1), kfmt(DM.offline[j].rows), fmt(DM.offline[j].index_kb, 1), kfmt(DM.offline[j].index_bytes_per_row),
+      kfmt(DM.game[j].index_bytes_per_row), fmt(DM.game[j].index_kb_est, 1), fmt(DM.game[j].records_kb + DM.game[j].index_kb_est, 1)]),
+    foot: ["All six", fmt(DM.gameBox.records_kb, 1), kfmt(sum(off.map(o => o.rows))), fmt(DM.offlineBox.index_kb, 1), "", "", fmt(DM.gameBox.index_kb_est, 1), fmt(dExtraGameKb(), 1)],
+  });
+})();
+
+/* Method and caveats --------------------------------------------------------------- */
+(function method() {
+  const S_ = DV.session;
+  const mins = v => fmt(S_[v].minutes, 0);
+  put("m-versions", B("0.940 (previous)"), " is GearSwap 0.940 as it stood before Windower/Lua #2567 changed its bag rebuild under the same version number. ",
+    B("0.940 (new)"), " is the public release of 2026-09-30, with #2567's refactored bag rebuild and the guards #2568 added to it. ",
+    B("GearswapRevised"), " is Rahvin's own fork of GearSwap 0.940, meant for players to use in place of GearSwap's Live and Dev versions, with its bag lists kept between refreshes and its equippable bags indexed by item name. It is a separate addon, not a GearSwap release, and for its counting session it was loaded in GearSwap's place with the same job files.");
+  put("m-gearswap", "The sandbox counts GearSwap's refreshes and events by GearSwap's own rules, client by client, the same under every version, and prices each at Rahvin's in-game figure for that character under the version: his mean per call over a counting session he played on his six characters. 0.940 (previous) is priced from his session of " +
+    S_[PREV].day + " over a " + mins(PREV) + "-minute recording, 0.940 (new) from his session of " + S_[NEW].day + " on the public release over a " + mins(NEW) +
+    "-minute recording, and GearswapRevised from his session the same evening with it loaded in GearSwap's place, over " + mins(DD) +
+    " minutes. The memory a refresh and an event changing no gear allocate comes from his benchmark at the camp beside each session, except 0.940 (previous)'s events changing no gear, from a quiet benchmark of 2026-09-29. " +
+    "The fight's timeline ran once under each version's prices. Everything else, the suites' own code and the Windower crossings, is the three-suite report's measurement, unchanged.");
+  put("cav-drift", "Each version is priced from its own counting session: 0.940 (previous) on " + S_[PREV].day + ", 0.940 (new) and GearswapRevised on the evening of " +
+    S_[NEW].day + ", two hours apart. Between those two sessions the same code read up to " +
+    pc(DRIFT) + " apart, beyond a session's own error of " + pc1(FIG.seUsLo * 100) + " to " + pc(FIG.seUsHi * 100) +
+    " of a timed price, so the versions compare only where they differ by more than that. 0.940 (new)'s full refresh, " + pc1(FIG.newLo * 100) + " to " + pc1(FIG.newHi * 100) +
+    " below 0.940 (previous)'s, lies within it and is not resolved, and its walk, the same code in both, reads more than 0.940 (previous)'s. GearswapRevised's full refresh, " +
+    pc1(FIG.dLo * 100) + " to " + pc1(FIG.dHi * 100) + " below, stands well outside it.");
+  put("cav-writers", "GearSwap's item-cache writers, which run as inventory packets and equip replies arrive, are left out of every figure. In Rahvin's sessions they took " +
+    fmt(FIG.newWrLo, 0) + " to " + fmt(FIG.newWrHi, 0) + " µs a second on each character under 0.940 (new), " + pc1(FIG.newWsLo * 100) + " to " + pc1(FIG.newWsHi * 100) +
+    " of GearSwap's own work there, and " + fmt(FIG.dWrLo, 0) + " to " + fmt(FIG.dWrHi, 0) + " µs under GearswapRevised, " + pc1(FIG.dWsLo * 100) + " to " + pc1(FIG.dWsHi * 100) +
+    " of its much smaller total. Character by character, GearswapRevised's writers read " + pc1(FIG.wrUpLo * 100) + " to " + pc1(FIG.wrUpHi * 100) +
+    " above 0.940 (new)'s, " + (FIG.wrUpHi * 100 < DRIFT ? "inside the drift between sessions" : "partly beyond the drift between sessions") +
+    ": they are not the same code, since GearswapRevised's also note each row they write for its kept bag lists. 0.940 (previous) runs the same writers as 0.940 (new).");
+  put("cav-bags", "Under either 0.940 a refresh rebuilds every bag, so its price follows how much a character carries, and a character with fuller or emptier bags than Rahvin's pays more or less per refresh on every suite alike. Under GearswapRevised a refresh walks only the bags written to since the last one, so its price hardly follows what a character carries.");
+  put("cav-error", "Each figure's plus or minus is one standard error: the spread of the column's " + DV.passes +
+    " passes and the error of that version's in-game prices, combined as independent. It does not cover the drift between sessions above.");
+  put("cav-out", "It carries five of the three-suite report's sections. Everything else, frame time among it, is in that report, which prices GearSwap's time as 0.940 (previous) does here. " +
+    "Its memory churn reads " + pc1(FIG.reportChurnLo * 100) + " to " + pc1(FIG.reportChurnHi * 100) + " higher than this document's 0.940 (previous) figures, from a later correction of that version's event bytes.");
+  const own = v => V.flatMap(k => CFGS.map(cfg => czv(v, "cpu", cfg, k).own / at(v).cpuTotal[cfg][k] * 100));
+  put("cav-own", "The three-suite report sizes a few small gaps between the model and the game, each by running the fight again with GearSwap priced as 0.940 (previous). Under GearswapRevised the suites' own code is up to " +
+    pc1(hi(own(DD))) + " of a column, against " + pc1(hi(own(PREV))) + " under 0.940 (previous), so a gap in the suites' own code weighs more there. None was re-sized under GearswapRevised's prices.");
+})();
+</script>
+</body>
+</html>
