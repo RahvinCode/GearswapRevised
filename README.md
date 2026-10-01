@@ -4,7 +4,7 @@ GearswapRevised is my fork of GearSwap, built on GearSwap 0.940 and meant to be 
 
 ## Load GearswapRevised instead of Gearswap. 
 
-**GearswapRevised and GearSwap are mutually exclusive. Never load them at the same time.** Both answer to the `gs` and `gearswap` commands, both handle every game event, and both load your job files and send equip commands. With both loaded, every event is handled twice and the two fight over your gear. Unload GearSwap before you load GearswapRevised, and make sure nothing loads GearSwap again when the game starts.  Turn off the auto load for Gearswap within your Windower profile and add "load GearswapRevised" to your init.txt without the quotes.
+**GearswapRevised and GearSwap are mutually exclusive. Never load them at the same time.** Both answer to the `gs` and `gearswap` commands, both handle every game event, and both load your job files and send equip commands. With both loaded, every event is handled twice and the two fight over your gear. Unload GearSwap before you load GearswapRevised, and make sure nothing loads GearSwap again when the game starts.  Turn off the auto load for Gearswap within your Windower profile and add "lua load GearswapRevised" to your init.txt without the quotes.
 
 ## What's Different with GearswapRevised?
 
