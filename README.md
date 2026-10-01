@@ -40,4 +40,4 @@ Gains in one area often come at a cost in another. As long as the costs are mana
 - **More memory held.** The kept bag lists carry a small record each, and the index is new. In the game together they hold about 75 to 167 KB more per character than the live version, and scales with the size of a character's total inventory.  75 KB is around 400 items while 170 KB is around 820 items total in inventory.
 - **The item-cache writers**, which run as inventory and equip packets arrive, took 62 to 113 µs a second per character in the measured session on GearswapRevised, 9% to 31% more than under the public release, since each write is now also noted for the kept bag lists. That is 6% to 11% of GearSwap's much smaller total.
 
-# Rahvin GS 2.1 is included in the data folder.  It's safe to leave there if you're using a different suite.  You can delete RahvinGS and Sample Job Files if they're not wanted.
+Rahvin GS 2.1 is included in the data folder.  It's safe to leave there if you're using a different suite.  You can delete RahvinGS and Sample Job Files if they're not wanted. See https://github.com/RahvinCode/Gearswap for more information.
