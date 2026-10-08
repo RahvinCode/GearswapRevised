@@ -1,4 +1,5 @@
 --Copyright (c) 2013~2016, Byrthnoth
+--Copyright (c) 2025-2026, Rahvin/Voliathon
 --All rights reserved.
 
 --Redistribution and use in source and binary forms, with or without
@@ -24,6 +25,12 @@
 --(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 --SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+-- Localized global functions for speed
+local math_floor = math.floor
+local string_char = string.char
+local os_time = os.time
+local table_clear = table.clear
+
 parse = {
     i={}, -- Incoming packets
     o={}  -- Outgoing packets, currently none are really parsed for information
@@ -32,7 +39,7 @@ parse = {
 parse.i[0x00A] = function (data)
     windower.debug('zone change')
     command_registry = Command_Registry.new()
-    table.clear(not_sent_out_equip)
+    table_clear(not_sent_out_equip)
 
     player.id = data:unpack('I',0x05)
     player.index = data:unpack('H',0x09)
@@ -99,7 +106,7 @@ parse.i[0x00B] = function(data)
 end
 
 parse.i[0x00E] = function (data)
-    if pet.index and pet.index == data:unpack('H',9) and math.floor((data:byte(11)%8)/4)== 1 then
+    if pet.index and pet.index == data:unpack('H',9) and math_floor((data:byte(11)%8)/4)== 1 then
         local status_id = data:byte(32)
         -- Filter all statuses aside from Idle/Engaged/Dead/Engaged dead.
         if pet.status_id ~= status_id and (status_id < 4 or status_id == 33 or status_id == 47) then
@@ -164,17 +171,17 @@ parse.i[0x01F] = function (data)
 end
 
 parse.i[0x020] = function (data)
-        local bag = to_windower_compact(res.bags[data:byte(0x0F)].english)
-        local slot = data:byte(0x10)
-        local was = items[bag][slot] and items[bag][slot].id
-        if not items[bag][slot] then items[bag][slot] = make_empty_item_table(slot) end
-        items[bag][slot].id = data:unpack('H',0x0D)
-        items[bag][slot].count = data:unpack('I',5)
-        items[bag][slot].bazaar = data:unpack('I',9)
-        items[bag][slot].status = data:byte(0x11)
-        items[bag][slot].extdata = data:sub(0x12,0x29)
-        -- Did not mess with linkshell stuff
-        note_item_row(bag, slot, was ~= items[bag][slot].id)
+    local bag = to_windower_compact(res.bags[data:byte(0x0F)].english)
+    local slot = data:byte(0x10)
+    local was = items[bag][slot] and items[bag][slot].id
+    if not items[bag][slot] then items[bag][slot] = make_empty_item_table(slot) end
+    items[bag][slot].id = data:unpack('H',0x0D)
+    items[bag][slot].count = data:unpack('I',5)
+    items[bag][slot].bazaar = data:unpack('I',9)
+    items[bag][slot].status = data:byte(0x11)
+    items[bag][slot].extdata = data:sub(0x12,0x29)
+    -- Did not mess with linkshell stuff
+    note_item_row(bag, slot, was ~= items[bag][slot].id)
 end
 
 parse.i[0x037] = function (data)
@@ -192,7 +199,7 @@ parse.i[0x037] = function (data)
         end
     end]]
     -- Info provided by Akaden
-    vana_offset = os.time() - (((data:unpack("I",0x41)*60 - data:unpack("I",0x3D)) % 0x100000000) / 60)
+    vana_offset = os_time() - (((data:unpack("I",0x41)*60 - data:unpack("I",0x3D)) % 0x100000000) / 60)
 
     local indi_byte = data:byte(0x59)
     if indi_byte%128/64 >= 1 then
@@ -200,7 +207,7 @@ parse.i[0x037] = function (data)
         _ExtraData.player.indi = {
                 element = res.elements[indi_byte%8][language],
                 element_id = indi_byte%8,
-                size = math.floor((indi_byte%64)/16) + 1, -- Size range of 1~4
+                size = math_floor((indi_byte%64)/16) + 1, -- Size range of 1~4
             }
         if (indi_byte%16)/8 >= 1 then
             _ExtraData.player.indi.target = 'Enemy'
@@ -291,10 +298,15 @@ parse.i[0x050] = function (data)
     -- should simplify this code using return when I gain confidence in it
     parse_equip_chunk(data:sub(5,7))
     local slot = data:byte(6)
-    for chunk,ind in injected_equipment_registry[slot]:it() do
+    local reg = injected_equipment_registry[slot]
+    for chunk,ind in reg:it() do
         if chunk == data:sub(5,7) then
-            -- Matched
-            injected_equipment_registry[slot] = injected_equipment_registry[slot]:slice(ind+1) -- Eliminate current and all preceding packets if we get a match
+            -- Matched: Clear in-place if this was the last entry, otherwise slice
+            if ind >= reg.n then
+                reg:clear()
+            else
+                injected_equipment_registry[slot] = reg:slice(ind+1)
+            end
             return
         end
         --[[for i=9,9+4*(chunk:byte(5)-1),4 do -- The server replies to equipset packets with both single equip packets and equipset packets.
@@ -307,8 +319,11 @@ parse.i[0x050] = function (data)
     -- Unexpected packet found!
 end
 
-function update_equipment()
-    local tab = {}
+function update_equipment(tab)
+    -- Use provided table to prevent GC churn, or create one if missing
+    tab = tab or {}
+    table_clear(tab)
+    
     for i,v in pairs(items.equipment) do
         tab[i] = {bag_id = v.bag_id,slot=v.slot}
     end
@@ -318,7 +333,7 @@ function update_equipment()
             tab[default_slot_map[i]] = {
                 bag_id = last:byte(3),
                 slot = last:byte(1) == 0 and empty or last:byte(1),
-            }
+                }
         end
     end
     return tab
@@ -333,10 +348,15 @@ parse.i[0x117] = function (data)
     -- should simplify this code using return when I gain confidence in it
     for i=9,9+4*(data:byte(5)-1),4 do -- Byte position for the start of the current chunk
         local slot = data:byte(i+1)
-        for chunk,ind in injected_equipment_registry[slot]:it() do
+        local reg = injected_equipment_registry[slot]
+        for chunk,ind in reg:it() do
             if chunk == data:sub(i,i+2) then
                 -- This is the response to an injected equipset packet, so remove those packets from the registry even if it actually failed to swap.
-                injected_equipment_registry[slot] = injected_equipment_registry[slot]:slice(ind+1)
+                if ind >= reg.n then
+                    reg:clear()
+                else
+                    injected_equipment_registry[slot] = reg:slice(ind+1)
+                end
             end
         end
     end
@@ -373,9 +393,9 @@ parse.i[0x05E] = function (data)
             [3]=res.regions[2],[4]={english='Beastman',japanese='Beastman'},[0xFF]=res.regions[3]}
         _ExtraData.world.conquest.strengths = {
             sandoria=strength_map[data:byte(offset+2)%4],
-            bastok=strength_map[math.floor(data:byte(offset+2)%16/4)],
-            windurst=strength_map[math.floor(data:byte(offset+2)%64/16)],
-            beastmen=strength_map[math.floor(data:byte(offset+2)/64)],}
+            bastok=strength_map[math_floor(data:byte(offset+2)%16/4)],
+            windurst=strength_map[math_floor(data:byte(offset+2)%64/16)],
+            beastmen=strength_map[math_floor(data:byte(offset+2)/64)],}
         _ExtraData.world.conquest.nation = nation_map[data:byte(offset+3)][language]
         _ExtraData.world.conquest.sandoria = data:byte(0x87)
         _ExtraData.world.conquest.bastok = data:byte(0x88)
@@ -444,12 +464,23 @@ end
 parse.i[0x062] = function (data)
     for i = 1,0x71,2 do
         local skill = data:unpack('H',i + 0x82)%32768
-        local current_skill = res.skills[math.floor(i/2)+1]
+        local current_skill = res.skills[math_floor(i/2)+1]
         if current_skill then
             player.skills[to_windower_api(current_skill.english)] = skill
         end
     end
 end
+
+-- Define the buff metatable ONCE at module level to prevent GC churn
+local buff_mt = {
+    __index = function(t,k)
+        if k and k == 'duration' then
+            return rawget(t,'time') - os_time() + (vana_offset or 0)
+        else
+            return rawget(t,k)
+        end
+    end
+}
 
 parse.i[0x063] = function (data)
     if data:byte(0x05) == 0x09 and blank_0x063_v9_inc then
@@ -461,30 +492,26 @@ parse.i[0x063] = function (data)
         -- windower.packets.last_incoming, which leaves them without buff information but with a
         -- informative 0x063 v9 packet coming next. So this step checks confirms the packet is
         -- empty before returning
-        if data:sub(0x49,0xC8) == string.char(0):rep(128) then
+        if data:sub(0x49,0xC8) == string_char(0):rep(128) then
             return
         end
     end
     if data:byte(0x05) == 0x09 then
         local newbuffs = {}
+
         for i=1,32 do
             local buff_id = data:unpack('H',i*2+7)
             if buff_id ~= 255 and buff_id ~= 0 then -- 255 is used for "no buff"
                 local t = data:unpack('I',i*4+0x45)/60
+                
+                -- Assign the pre-built metatable
                 newbuffs[i] = setmetatable({
                     name=res.buffs[buff_id].name,
                     buff=copy_entry(res.buffs[buff_id]),
                     id=buff_id,
                     time=t,
                     date=os.date('*t',t),
-                    },
-                    {__index=function(t,k)
-                        if k and k=='duration' then
-                            return rawget(t,'time')-os.time()+(vana_offset or 0)
-                        else
-                            return rawget(t,k)
-                        end
-                    end})
+                    }, buff_mt)
             end
         end
         if seen_0x063_type9 then
@@ -606,7 +633,7 @@ parse.i[0x076] = function (data)
             _ExtraPartyData.buffs[index] = {}
             _ExtraPartyData.buff_details[index] = {}
             for n=1,32 do
-                local buff_id = data:byte(i*48+5+16+n-1) + 256*( math.floor( data:byte(i*48+5+8+ math.floor((n-1)/4)) / 4^((n-1)%4) )%4)
+                local buff_id = data:byte(i*48+5+16+n-1) + 256*( math_floor( data:byte(i*48+5+8+ math_floor((n-1)/4)) / 4^((n-1)%4) )%4)
                 if buff_id ~= 255 and buff_id ~= 0 then
                     _ExtraPartyData.buffs[index][n] = buff_id
                     _ExtraPartyData.buff_details[index][n] = {
@@ -743,9 +770,9 @@ parse.o[0x100] = function(data)
 
         command_registry = Command_Registry.new()
 
-        table.clear(not_sent_out_equip)
-        table.clear(equip_list_history)
-        table.clear(equip_list)
+        table_clear(not_sent_out_equip)
+        table_clear(equip_list_history)
+        table_clear(equip_list)
         player.main_job_id = newmain
         update_job_names()
         for i=0,15 do

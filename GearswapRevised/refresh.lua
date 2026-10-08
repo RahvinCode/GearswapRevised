@@ -1,4 +1,5 @@
 --Copyright (c) 2013~2016, Byrthnoth
+--Copyright (c) 2025-2026, Rahvin/Voliathon
 --All rights reserved.
 
 --Redistribution and use in source and binary forms, with or without
@@ -349,7 +350,7 @@ function refresh_player(dt,user_event_flag)
         fellow.isvalid=false
     end
 
-    table.reassign(buffactive,convert_buff_list(player.buffs))
+    convert_buff_list(player.buffs, buffactive)
 
     for global_variable_name,extradatatable in pairs(_ExtraData) do
         if _G[global_variable_name] then
@@ -502,10 +503,10 @@ function refresh_group_info(dt,user_event_flag)
 
         if allyIndex and partyIndex then
             if v.mob and _ExtraPartyData.buffs[v.mob.index] then
-                v.buffactive = convert_buff_list(_ExtraPartyData.buffs[v.mob.index])
+                v.buffactive = convert_buff_list(_ExtraPartyData.buffs[v.mob.index], v.buffactive)
                 v.buff_details = _ExtraPartyData.buff_details[v.mob.index]
             elseif v.mob and v.mob.index == player.index then
-                v.buffactive = buffactive
+                v.buffactive = convert_buff_list(player.buffs, v.buffactive)
             end
             c_alliance[allyIndex][partyIndex] = v
             c_alliance[allyIndex].count = c_alliance[allyIndex].count + 1
@@ -565,9 +566,10 @@ function make_alliance()
 end
 
 -----------------------------------------------------------------------------------
---Name: convert_buff_list(bufflist)
+--Name: convert_buff_list(bufflist, target_tab)
 --Args:
 ---- bufflist (table): List of buffs from windower.ffxi.get_player()['buffs']
+---- target_tab (table, optional): Existing table to wipe in-place and reuse
 -----------------------------------------------------------------------------------
 --Returns:
 ---- buffarr (table)
@@ -575,24 +577,25 @@ end
 ---- of that string present in the buff array. So two marches would give
 ---- buffarr.march==2.
 -----------------------------------------------------------------------------------
-function convert_buff_list(bufflist)
-    local buffarr = {}
+function convert_buff_list(bufflist, target_tab)
+    -- Use the provided table to prevent GC churn, or create a new one if nil
+    local buffarr = target_tab or {}
+    
+    if target_tab then
+        -- Wipe the existing table clean without destroying its memory reference
+        for k in pairs(buffarr) do 
+            buffarr[k] = nil 
+        end
+    end
+
     for _,id in pairs(bufflist) do
         if res.buffs[id] then
             local buff = res.buffs[id][language]:lower()
-            if buffarr[buff] then
-                buffarr[buff] = buffarr[buff] +1
-            else
-                buffarr[buff] = 1
-            end
-
-            if buffarr[id] then
-                buffarr[id] = buffarr[id] +1
-            else
-                buffarr[id] = 1
-            end
+            buffarr[buff] = (buffarr[buff] or 0) + 1
+            buffarr[id] = (buffarr[id] or 0) + 1
         end
     end
+    
     return buffarr
 end
 

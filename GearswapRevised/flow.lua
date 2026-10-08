@@ -1,4 +1,5 @@
 --Copyright (c) 2013~2016, Byrthnoth
+--Copyright (c) 2025-2026, Rahvin/Voliathon
 --All rights reserved.
 
 --Redistribution and use in source and binary forms, with or without
@@ -25,6 +26,7 @@
 --SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
+local cur_equip_cache = {}
 
 -----------------------------------------------------------------------------------
 --Name: equip_sets(swap_type,ts,val1,val2)
@@ -55,9 +57,9 @@ function equip_sets(swap_type,ts,...)
     windower.debug(tostring(swap_type)..' enter')
     if showphase or debugging.general then msg.debugging(windower.to_shift_jis(tostring(swap_type))..' enter') end
 
-    local cur_equip = table.reassign({},update_equipment())
+    local cur_equip = update_equipment(cur_equip_cache)
 
-    table.reassign(equip_list,{})
+    table.clear(equip_list)
     table.reassign(player.equipment,to_names_set(cur_equip))
     for i,v in pairs(slot_map) do
         if not player.equipment[i] then

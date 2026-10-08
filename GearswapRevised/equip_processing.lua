@@ -1,4 +1,5 @@
 --Copyright (c) 2013~2016, Byrthnoth
+--Copyright (c) 2025-2026, Rahvin/Voliathon
 --All rights reserved.
 
 --Redistribution and use in source and binary forms, with or without
@@ -33,19 +34,51 @@
 ---- boolean indicating whether the given piece of gear can be worn or not
 ----    Checks for main job, level, superior level, and gender/race
 -----------------------------------------------------------------------------------
+
+-- Cache tables and state trackers to prevent constant database lookups
+local wearable_cache = {}
+local last_cache_job = 0
+local last_cache_level = 0
+local last_cache_su = 0
+
 function check_wearable(item_id)
-    if not item_id or item_id == 0 then -- 0 codes for an empty slot, but Arcon will probably make it nil at some point
-    elseif not res.items[item_id] then
-        msg.debugging("Item "..item_id.." has not been added to resources yet.")
-    elseif not res.items[item_id].jobs then -- Make sure item can be equipped by specific jobs (unlike pearlsacks).
-        --msg.debugging('GearSwap (Debug Mode): Item '..(res.items[item_id][language] or item_id)..' does not have a jobs field in the resources.')
-    elseif not res.items[item_id].slots then
-        -- Item is not equippable
-    else
-        return (res.items[item_id].jobs[player.main_job_id]) and (res.items[item_id].level<=player.jobs[res.jobs[player.main_job_id].ens]) and (res.items[item_id].races[player.race_id]) and
-            (player.superior_level >= (res.items[item_id].superior_level or 0))
+    -- Invalidate cache safely if the player changes jobs, levels up, or gains Superior Level
+    local current_level = player.jobs[res.jobs[player.main_job_id].ens]
+    if last_cache_job ~= player.main_job_id or last_cache_level ~= current_level or last_cache_su ~= player.superior_level then
+        table.clear(wearable_cache) -- Safely empty the cache table without GC churn
+        last_cache_job = player.main_job_id
+        last_cache_level = current_level
+        last_cache_su = player.superior_level
     end
-    return false
+
+    -- Return the cached result instantly if we've checked this item before
+    if wearable_cache[item_id] ~= nil then
+        return wearable_cache[item_id]
+    end
+
+    -- If not in cache, do the heavy database lifting exactly once
+    if not item_id or item_id == 0 then
+        wearable_cache[item_id] = false
+        return false
+    end
+
+    local item = res.items[item_id]
+    if not item then
+        msg.debugging("Item "..item_id.." has not been added to resources yet.")
+        wearable_cache[item_id] = false
+        return false
+    elseif not item.jobs or not item.slots then
+        wearable_cache[item_id] = false
+        return false
+    else
+        local can_wear = item.jobs[player.main_job_id] and 
+                         item.level <= current_level and 
+                         item.races[player.race_id] and
+                         player.superior_level >= (item.superior_level or 0)
+        
+        wearable_cache[item_id] = can_wear
+        return can_wear
+    end
 end
 
 -----------------------------------------------------------------------------------
@@ -57,9 +90,35 @@ end
 --Returns:
 ---- boolean indicating whether the name matches the resources entry for the itemID
 -----------------------------------------------------------------------------------
+
+-- String caches to prevent Garbage Collection churn during heavy comparisons
+local res_name_cache = {}
+local res_log_cache = {}
+local lower_name_cache = {}
+local last_cache_language = language
+
 function name_match(item_id,name)
+    if last_cache_language ~= language then
+        table.clear(res_name_cache)
+        table.clear(res_log_cache)
+        last_cache_language = language
+    end
+
     if res.items[item_id] then
-        return (res.items[item_id][language..'_log']:lower() == name:lower() or res.items[item_id][language]:lower() == name:lower())
+        -- Cache the FFXI database strings once per item
+        if not res_name_cache[item_id] then
+            res_name_cache[item_id] = res.items[item_id][language]:lower()
+            res_log_cache[item_id] = res.items[item_id][language..'_log']:lower()
+        end
+        
+        -- Cache the user's requested item string once
+        local l_name = lower_name_cache[name]
+        if not l_name then
+            l_name = name:lower()
+            lower_name_cache[name] = l_name
+        end
+
+        return (res_log_cache[item_id] == l_name or res_name_cache[item_id] == l_name)
     else
         return false
     end
@@ -127,14 +186,26 @@ end
 -- The bag's rows by name; a hit is {place, bag, row}, place ordering bags by their
 -- position k in equippable_item_bags and rows by ipairs within a bag.
 function build_event_index(rows, bag, k)
+    if last_cache_language ~= language then
+        table.clear(res_name_cache)
+        table.clear(res_log_cache)
+        last_cache_language = language
+    end
+
     local by_name = {}
     for i,item_tab in ipairs(rows) do
-        local r = type(item_tab) == 'table' and res.items[item_tab.id]
+        local id = type(item_tab) == 'table' and item_tab.id
+        local r = id and res.items[id]
         if r then
             local hit = {k*1024+i, bag, item_tab}
-            local short, long = r[language], r[language..'_log']
-            short = type(short) == 'string' and short:lower()
-            long = type(long) == 'string' and long:lower()
+            local short = res_name_cache[id]
+            local long = res_log_cache[id]
+            if not short then
+                short = type(r[language]) == 'string' and r[language]:lower() or false
+                long = type(r[language..'_log']) == 'string' and r[language..'_log']:lower() or false
+                res_name_cache[id] = short
+                res_log_cache[id] = long
+            end
             if short then add_hit(by_name, short, hit) end
             if long and long ~= short then add_hit(by_name, long, hit) end
         end
@@ -146,25 +217,35 @@ end
 -- once, in scratch arrays reused from event to event.
 local event_names, event_rows = {}, {}
 local function by_place(a, b) return a[1] < b[1] end
-function event_candidates(equip_list)
+function event_candidates(equip_list, parsed_equip_list)
     if not event_bags then
         event_bags = {}
         for _,bag in pairs(equippable_item_bags) do
             event_bags[#event_bags+1] = {bag = bag, api = to_windower_bag_api(bag.en)}
         end
     end
-    -- The names proposed, as expand_entry reads them.
+    -- The names proposed, using pre-parsed entries and cached lowercase strings
     local m = 0
     for _,slot_name in pairs(default_slot_map) do
-        local entry, name = equip_list[slot_name], nil
-        if type(entry) == 'table' and entry ~= empty then
-            if type(entry.name) == 'string' then name = entry.name end
-        elseif type(entry) == 'string' and entry ~= '' then
-            name = entry
-        end
-        if name then
-            m = m + 1
-            event_names[m] = name:lower()
+        if equip_list[slot_name] then
+            local name = parsed_equip_list and parsed_equip_list[slot_name] and parsed_equip_list[slot_name].name
+            if not name then
+                local entry = equip_list[slot_name]
+                if type(entry) == 'table' and entry ~= empty then
+                    if type(entry.name) == 'string' then name = entry.name end
+                elseif type(entry) == 'string' and entry ~= '' then
+                    name = entry
+                end
+            end
+            if name and name ~= empty then
+                m = m + 1
+                local l_name = lower_name_cache[name]
+                if not l_name then
+                    l_name = name:lower()
+                    lower_name_cache[name] = l_name
+                end
+                event_names[m] = l_name
+            end
         end
     end
     for i = #event_names, m + 1, -1 do event_names[i] = nil end
@@ -218,8 +299,21 @@ function unpack_equip_list(equip_list,cur_equip)
     local used_list = {} -- Gear that is scheduled to be equipped but is already being worn
     local error_list = {} -- Gear that cannot be equipped for whatever reason
     local priorities = Priorities:new()
+
+    -- Pre-parse the requested equipment to avoid redundant expand_entry calls
+    local parsed_equip_list = {}
+
     for slot_id,slot_name in pairs(default_slot_map) do
         local name,priority,augments,designated_bag = expand_entry(equip_list[slot_name])
+        
+        -- Cache the parsed results
+        parsed_equip_list[slot_name] = {
+            name = name, 
+            priority = priority, 
+            augments = augments, 
+            designated_bag = designated_bag
+        }
+
         priorities[slot_id] = priority
         if name == empty then
             equip_list[slot_name] = nil
@@ -239,83 +333,85 @@ function unpack_equip_list(equip_list,cur_equip)
     
     -- Visit only the rows whose names the event proposes, in the order the
     -- walk over every row of every bag would reach them
-    for _,cand in ipairs(event_candidates(equip_list)) do
+    for _,cand in ipairs(event_candidates(equip_list, parsed_equip_list)) do
         local bag, item_tab = cand[2], cand[3]
-            if type(item_tab) == 'table' and check_wearable(item_tab.id) then
-                if item_tab.status == 0 or item_tab.status == 5 then
-                    for slot_id in res.items[item_tab.id].slots:it() do
-                        local slot_name = default_slot_map[slot_id]
-                        -- equip_list[slot_name] can also be a table (that doesn't contain a "name" property) or a number, which are both cases that should not generate any kind of equipment changing.
-                        -- Hence the "and name" below.
-                        if not ret_list[slot_id] and equip_list[slot_name] then -- If we haven't already found something for this slot and still want to equip something there
-                            -- Make sure we're not already planning to equip this item in another slot.
-                            if  (slot_id == 0  and used_list[1]  and used_list[1].bag_id  == bag.id and used_list[1].slot  == item_tab.slot) or -- main vs. sub
-                                (slot_id == 1  and used_list[0]  and used_list[0].bag_id  == bag.id and used_list[0].slot  == item_tab.slot) or -- sub vs. main
-                                (slot_id == 11 and used_list[12] and used_list[12].bag_id == bag.id and used_list[12].slot == item_tab.slot) or --left_earring vs. right_earring
-                                (slot_id == 12 and used_list[11] and used_list[11].bag_id == bag.id and used_list[11].slot == item_tab.slot) or --right_earring vs. left_earring
-                                (slot_id == 13 and used_list[14] and used_list[14].bag_id == bag.id and used_list[14].slot == item_tab.slot) or --left_ring vs. right_ring
-                                (slot_id == 14 and used_list[13] and used_list[13].bag_id == bag.id and used_list[13].slot == item_tab.slot) then --right_ring vs. left_ring
-                                    break
-                            end
-                            local name,priority,augments,designated_bag = expand_entry(equip_list[slot_name])
-                            
-                            if (not designated_bag or designated_bag == bag.id) and name and name_match(item_tab.id,name) then
-                                if augments and #augments ~= 0 then
-                                    if res.items[item_tab.id].flags.Rare or extdata.compare_augments(augments,extdata.decode(item_tab).augments) then
-                                    -- Check if the augments are right
-                                    -- If the item is Rare, then even if the augments are wrong try to equip it anyway because you only have one
-                                        equip_list[slot_name] = nil
-                                        ret_list[slot_id] = {bag_id=bag.id,slot=item_tab.slot}
-                                        used_list[slot_id] = ret_list[slot_id]
-                                        break
-                                    --else the piece specifies augments that don't match the current piece, so don't break and keep trying.
-                                    end
-                                else
+        if type(item_tab) == 'table' and check_wearable(item_tab.id) then
+            if item_tab.status == 0 or item_tab.status == 5 then
+                for slot_id in res.items[item_tab.id].slots:it() do
+                    local slot_name = default_slot_map[slot_id]
+                    -- equip_list[slot_name] can also be a table (that doesn't contain a "name" property) or a number, which are both cases that should not generate any kind of equipment changing.
+                    -- Hence the "and name" below.
+                    if not ret_list[slot_id] and equip_list[slot_name] then -- If we haven't already found something for this slot and still want to equip something there
+                        -- Make sure we're not already planning to equip this item in another slot.
+                        if  (slot_id == 0  and used_list[1]  and used_list[1].bag_id  == bag.id and used_list[1].slot  == item_tab.slot) or -- main vs. sub
+                            (slot_id == 1  and used_list[0]  and used_list[0].bag_id  == bag.id and used_list[0].slot  == item_tab.slot) or -- sub vs. main
+                            (slot_id == 11 and used_list[12] and used_list[12].bag_id == bag.id and used_list[12].slot == item_tab.slot) or --left_earring vs. right_earring
+                            (slot_id == 12 and used_list[11] and used_list[11].bag_id == bag.id and used_list[11].slot == item_tab.slot) or --right_earring vs. left_earring
+                            (slot_id == 13 and used_list[14] and used_list[14].bag_id == bag.id and used_list[14].slot == item_tab.slot) or --left_ring vs. right_ring
+                            (slot_id == 14 and used_list[13] and used_list[13].bag_id == bag.id and used_list[13].slot == item_tab.slot) then --right_ring vs. left_ring
+                                break
+                        end
+                        
+                        local parsed = parsed_equip_list[slot_name]
+                        local name,priority,augments,designated_bag = parsed.name, parsed.priority, parsed.augments, parsed.designated_bag
+                        
+                        if (not designated_bag or designated_bag == bag.id) and name and name_match(item_tab.id,name) then
+                            if augments and #augments ~= 0 then
+                                if res.items[item_tab.id].flags.Rare or extdata.compare_augments(augments,extdata.decode(item_tab).augments) then
+                                -- Check if the augments are right
+                                -- If the item is Rare, then even if the augments are wrong try to equip it anyway because you only have one
                                     equip_list[slot_name] = nil
                                     ret_list[slot_id] = {bag_id=bag.id,slot=item_tab.slot}
                                     used_list[slot_id] = ret_list[slot_id]
                                     break
+                                --else the piece specifies augments that don't match the current piece, so don't break and keep trying.
                                 end
-                            end
-                        end
-                    end
-                else -- item_tab.status > 0
-                    for slot_id in res.items[item_tab.id].slots:it() do
-                        local slot_name = default_slot_map[slot_id]
-                        local name = expand_entry(equip_list[slot_name])
-                        if name and name ~= empty then -- If "name" isn't a piece of gear, then it won't have a valid value at this point and should be ignored.
-                            if name_match(item_tab.id,name) then
-                                if item_tab.status == 25 then
-                                    error_list[slot_name] = name..' (bazaared)'
-                                else
-                                    error_list[slot_name] = name..' (status unknown: '..item_tab.status..' )'
-                                end
+                            else
+                                equip_list[slot_name] = nil
+                                ret_list[slot_id] = {bag_id=bag.id,slot=item_tab.slot}
+                                used_list[slot_id] = ret_list[slot_id]
                                 break
                             end
                         end
                     end
                 end
-            else
-                for __,slot_name in pairs(default_slot_map) do
-                    local name = expand_entry(equip_list[slot_name])
-                    if name and name ~= empty and name_match(item_tab.id,name) then
-                        if not res.items[item_tab.id].jobs[player.main_job_id] then
-                            equip_list[slot_name] = nil
-                            error_list[slot_name] = name..' (cannot be worn by this job)'
-                        elseif not (res.items[item_tab.id].level<=player.jobs[res.jobs[player.main_job_id].ens]) then
-                            equip_list[slot_name] = nil
-                            error_list[slot_name] = name..' (job level is too low)'
-                        elseif not res.items[item_tab.id].races[player.race_id] then
-                            equip_list[slot_name] = nil
-                            error_list[slot_name] = name..' (cannot be worn by your race)'
-                        elseif not res.items[item_tab.id].slots then
-                            equip_list[slot_name] = nil
-                            error_list[slot_name] = name..' (cannot be worn)'
+            else -- item_tab.status > 0
+                for slot_id in res.items[item_tab.id].slots:it() do
+                    local slot_name = default_slot_map[slot_id]
+                    local name = parsed_equip_list[slot_name].name
+                    if name and name ~= empty then -- If "name" isn't a piece of gear, then it won't have a valid value at this point and should be ignored.
+                        if name_match(item_tab.id,name) then
+                            if item_tab.status == 25 then
+                                error_list[slot_name] = name..' (bazaared)'
+                            else
+                                error_list[slot_name] = name..' (status unknown: '..item_tab.status..' )'
+                            end
+                            break
                         end
-                        break
                     end
                 end
             end
+        elseif type(item_tab) == 'table' then
+            for __,slot_name in pairs(default_slot_map) do
+                local name = parsed_equip_list[slot_name].name
+                if name and name ~= empty and name_match(item_tab.id,name) then
+                    if not res.items[item_tab.id].jobs[player.main_job_id] then
+                        equip_list[slot_name] = nil
+                        error_list[slot_name] = name..' (cannot be worn by this job)'
+                    elseif not (res.items[item_tab.id].level<=player.jobs[res.jobs[player.main_job_id].ens]) then
+                        equip_list[slot_name] = nil
+                        error_list[slot_name] = name..' (job level is too low)'
+                    elseif not res.items[item_tab.id].races[player.race_id] then
+                        equip_list[slot_name] = nil
+                        error_list[slot_name] = name..' (cannot be worn by your race)'
+                    elseif not res.items[item_tab.id].slots then
+                        equip_list[slot_name] = nil
+                        error_list[slot_name] = name..' (cannot be worn)'
+                    end
+                    break
+                end
+            end
+        end
     end
     
     if _settings.debug_mode and table.length(error_list) > 0 then
