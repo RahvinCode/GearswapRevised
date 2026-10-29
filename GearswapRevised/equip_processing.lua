@@ -49,6 +49,22 @@ function check_wearable(item_id)
 end
 
 -----------------------------------------------------------------------------------
+-- Lowercased names, kept per language because GearSwap's string.lower depends on it
+-- (helper_functions.lua): each item's two resource names by id, and each name an
+-- equip set asks for. name_match, build_event_index and event_candidates read them.
+-- From Voli and Az's caches (GearswapRevised pull request 1).
+-----------------------------------------------------------------------------------
+local lowered_by_language = {}
+local function lowered()
+    local l = lowered_by_language[language]
+    if not l then
+        l = {log = {}, short = {}, asked = {}}
+        lowered_by_language[language] = l
+    end
+    return l
+end
+
+-----------------------------------------------------------------------------------
 --Name: name_match(item_id,name)
 --Args:
 ---- item_id - Item ID to be compared
@@ -59,7 +75,24 @@ end
 -----------------------------------------------------------------------------------
 function name_match(item_id,name)
     if res.items[item_id] then
-        return (res.items[item_id][language..'_log']:lower() == name:lower() or res.items[item_id][language]:lower() == name:lower())
+        local l = lowered()
+        local log = l.log[item_id]
+        if not log then
+            log = res.items[item_id][language..'_log']:lower()
+            l.log[item_id] = log
+        end
+        local asked = l.asked[name]
+        if not asked then
+            asked = name:lower()
+            l.asked[name] = asked
+        end
+        if log == asked then return true end
+        local short = l.short[item_id]
+        if not short then
+            short = res.items[item_id][language]:lower()
+            l.short[item_id] = short
+        end
+        return short == asked
     else
         return false
     end
@@ -128,13 +161,30 @@ end
 -- position k in equippable_item_bags and rows by ipairs within a bag.
 function build_event_index(rows, bag, k)
     local by_name = {}
+    local l = lowered()
     for i,item_tab in ipairs(rows) do
         local r = type(item_tab) == 'table' and res.items[item_tab.id]
         if r then
             local hit = {k*1024+i, bag, item_tab}
-            local short, long = r[language], r[language..'_log']
-            short = type(short) == 'string' and short:lower()
-            long = type(long) == 'string' and long:lower()
+            local short, long = l.short[item_tab.id], l.log[item_tab.id]
+            if not short then
+                short = r[language]
+                if type(short) == 'string' then
+                    short = short:lower()
+                    l.short[item_tab.id] = short
+                else
+                    short = false
+                end
+            end
+            if not long then
+                long = r[language..'_log']
+                if type(long) == 'string' then
+                    long = long:lower()
+                    l.log[item_tab.id] = long
+                else
+                    long = false
+                end
+            end
             if short then add_hit(by_name, short, hit) end
             if long and long ~= short then add_hit(by_name, long, hit) end
         end
@@ -154,6 +204,7 @@ function event_candidates(equip_list)
         end
     end
     -- The names proposed, as expand_entry reads them.
+    local l = lowered()
     local m = 0
     for _,slot_name in pairs(default_slot_map) do
         local entry, name = equip_list[slot_name], nil
@@ -164,7 +215,12 @@ function event_candidates(equip_list)
         end
         if name then
             m = m + 1
-            event_names[m] = name:lower()
+            local asked = l.asked[name]
+            if not asked then
+                asked = name:lower()
+                l.asked[name] = asked
+            end
+            event_names[m] = asked
         end
     end
     for i = #event_names, m + 1, -1 do event_names[i] = nil end
@@ -204,6 +260,34 @@ function event_candidates(equip_list)
     return event_rows
 end
 
+-- Each item's decoded augments, kept by its extdata and id: extdata.decode reads
+-- nothing else of the item (libs/extdata.lua), and the walk reads only .augments.
+-- An item without a string extdata or an id goes to extdata.decode as before. An
+-- item whose extdata changes as it is used (rank points, charges) adds an entry
+-- each time, so the table starts over past 4096 extdata strings.
+local decoded_augments, decoded_count = {}, 0
+local function augments_of(item_tab)
+    local raw, id = item_tab.extdata, item_tab.id
+    if type(raw) ~= 'string' or id == nil then
+        return extdata.decode(item_tab).augments
+    end
+    local by_id = decoded_augments[raw]
+    if not by_id then
+        if decoded_count >= 4096 then
+            decoded_augments, decoded_count = {}, 0
+        end
+        by_id = {}
+        decoded_augments[raw] = by_id
+        decoded_count = decoded_count + 1
+    end
+    local augments = by_id[id]
+    if augments == nil then
+        augments = extdata.decode(item_tab).augments or false
+        by_id[id] = augments
+    end
+    return augments or nil
+end
+
 -----------------------------------------------------------------------------------
 --Name: unpack_equip_list(inventory,equip_list)
 --Args:
@@ -229,7 +313,7 @@ function unpack_equip_list(equip_list,cur_equip)
         elseif name and cur_equip[slot_name].slot ~= empty then
             local item_tab = items[to_windower_bag_api(res.bags[cur_equip[slot_name].bag_id].en)][cur_equip[slot_name].slot]
             if name_match(item_tab.id,name) and
-            (not augments or (#augments ~= 0 and extdata.compare_augments(augments,extdata.decode(item_tab).augments))) and
+            (not augments or (#augments ~= 0 and extdata.compare_augments(augments,augments_of(item_tab)))) and
             (not designated_bag or designated_bag == cur_equip[slot_name].bag_id) then
                 equip_list[slot_name] = nil
                 used_list[slot_id] = {bag_id=cur_equip[slot_name].bag_id,slot=cur_equip[slot_name].slot}
@@ -261,7 +345,7 @@ function unpack_equip_list(equip_list,cur_equip)
                             
                             if (not designated_bag or designated_bag == bag.id) and name and name_match(item_tab.id,name) then
                                 if augments and #augments ~= 0 then
-                                    if res.items[item_tab.id].flags.Rare or extdata.compare_augments(augments,extdata.decode(item_tab).augments) then
+                                    if res.items[item_tab.id].flags.Rare or extdata.compare_augments(augments,augments_of(item_tab)) then
                                     -- Check if the augments are right
                                     -- If the item is Rare, then even if the augments are wrong try to equip it anyway because you only have one
                                         equip_list[slot_name] = nil

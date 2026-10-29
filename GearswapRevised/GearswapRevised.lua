@@ -25,18 +25,27 @@
 --SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 _addon.name = 'GearswapRevised'
-_addon.version = '0.950'
-_addon.author = 'Gearswap 0.940: Byrth, GearswapRevised Maintained by: Rahvin'
-_addon.commands = {'gs','gearswap'}
+_addon.version = '0.960'
+_addon.author = 'Gearswap 0.940: Byrth, GearswapRevised 0.960 Maintained by: Rahvin'
+_addon.commands = { 'gs', 'gearswap' }
 
-if windower.file_exists(windower.addon_path..'data/bootstrap.lua') then
-    debugging = {windower_debug = true,command_registry = false,general=false,logging=false}
+if windower.file_exists(windower.addon_path .. 'data/bootstrap.lua') then
+    debugging = { windower_debug = true, command_registry = false, general = false, logging = false }
 else
     debugging = {}
 end
 
-__raw = {lower = string.lower, upper = string.upper, debug=windower.debug,text={create=windower.text.create,
-    delete=windower.text.delete,registry = {}},prim={create=windower.prim.create,delete=windower.prim.delete,registry={}}}
+__raw = {
+    lower = string.lower,
+    upper = string.upper,
+    debug = windower.debug,
+    text = {
+        create = windower.text.create,
+        delete = windower.text.delete,
+        registry = {}
+    },
+    prim = { create = windower.prim.create, delete = windower.prim.delete, registry = {} }
+}
 
 
 language = 'english'
@@ -52,20 +61,20 @@ require 'queues'
 require 'sets'
 
 
-windower.text.create = function (str)
+windower.text.create = function(str)
     if __raw.text.registry[str] then
-        msg.addon_msg(123,'Text object cannot be created because it already exists.')
+        msg.addon_msg(123, 'Text object cannot be created because it already exists.')
     else
         __raw.text.registry[str] = true
         __raw.text.create(str)
     end
 end
 
-windower.text.delete = function (str)
+windower.text.delete = function(str)
     if __raw.text.registry[str] then
         local library = false
         if windower.text.saved_texts then
-            for i,v in pairs(windower.text.saved_texts) do
+            for i, v in pairs(windower.text.saved_texts) do
                 if v._name == str then
                     __raw.text.registry[str] = nil
                     windower.text.saved_texts[i]:destroy()
@@ -84,16 +93,16 @@ windower.text.delete = function (str)
     end
 end
 
-windower.prim.create = function (str)
+windower.prim.create = function(str)
     if __raw.prim.registry[str] then
-        msg.addon_msg(123,'Primitive cannot be created because it already exists.')
+        msg.addon_msg(123, 'Primitive cannot be created because it already exists.')
     else
         __raw.prim.registry[str] = true
         __raw.prim.create(str)
     end
 end
 
-windower.prim.delete = function (str)
+windower.prim.delete = function(str)
     if __raw.prim.registry[str] then
         __raw.prim.registry[str] = nil
         __raw.prim.delete(str)
@@ -133,7 +142,7 @@ require 'triggers'
 initialize_packet_parsing()
 gearswap_disabled = false
 
-windower.register_event('load',function()
+windower.register_event('load', function()
     windower.debug('load')
     refresh_globals()
 
@@ -143,29 +152,29 @@ windower.register_event('load',function()
     end
 end)
 
-windower.register_event('unload',function ()
+windower.register_event('unload', function()
     windower.debug('unload')
     user_pcall('file_unload')
     if logging then logfile:close() end
 end)
 
-windower.register_event('addon command',function (...)
+windower.register_event('addon command', function(...)
     windower.debug('addon command')
-    logit('\n\n'..tostring(os.clock())..table.concat({...},' '))
-    local splitup = {...}
+    logit('\n\n' .. tostring(os.clock()) .. table.concat({ ... }, ' '))
+    local splitup = { ... }
     if not splitup[1] then return end -- handles //gs
 
-    for i,v in pairs(splitup) do splitup[i] = windower.from_shift_jis(windower.convert_auto_trans(v)) end
+    for i, v in pairs(splitup) do splitup[i] = windower.from_shift_jis(windower.convert_auto_trans(v)) end
 
-    local cmd = table.remove(splitup,1):lower()
+    local cmd = table.remove(splitup, 1):lower()
 
     if cmd == 'c' then
         if gearswap_disabled then return end
         if splitup[1] then
             refresh_globals()
-            equip_sets('self_command',nil,_raw.table.concat(splitup,' '))
+            equip_sets('self_command', nil, _raw.table.concat(splitup, ' '))
         else
-            msg.addon_msg(123,'No self command passed.')
+            msg.addon_msg(123, 'No self command passed.')
         end
     elseif cmd == 'equip' then
         if gearswap_disabled then return end
@@ -173,9 +182,9 @@ windower.register_event('addon command',function (...)
         local set = get_set_from_keys(key_list)
         if set then
             refresh_globals()
-            equip_sets('equip_command',nil,set)
+            equip_sets('equip_command', nil, set)
         else
-            msg.addon_msg(123,'Equip command cannot be completed. That set does not exist.')
+            msg.addon_msg(123, 'Equip command cannot be completed. That set does not exist.')
         end
     elseif cmd == 'export' then
         export_set(splitup)
@@ -184,39 +193,39 @@ windower.register_event('addon command',function (...)
             refresh_globals()
             validate(splitup)
         else
-            msg.addon_msg(123,'There is nothing to validate because there is no file loaded.')
+            msg.addon_msg(123, 'There is nothing to validate because there is no file loaded.')
         end
     elseif cmd == 'l' or cmd == 'load' then
         if splitup[1] then
-            local f_name = table.concat(splitup,' ')
+            local f_name = table.concat(splitup, ' ')
             if f_name:sub(-4):lower() ~= '.lua' then
-                f_name = f_name..'.lua'
+                f_name = f_name .. '.lua'
             end
-            if pathsearch({f_name}) then
+            if pathsearch({ f_name }) then
                 refresh_globals()
                 command_registry = Command_Registry.new()
-                load_user_files(false,f_name)
+                load_user_files(false, f_name)
             else
-                msg.addon_msg(123,'File not found.')
+                msg.addon_msg(123, 'File not found.')
             end
         else
-            msg.addon_msg(123,'No file name was provided.')
+            msg.addon_msg(123, 'No file name was provided.')
         end
     elseif cmd == 'enable' then
-        disenable(splitup,command_enable,'enable',false)
+        disenable(splitup, command_enable, 'enable', false)
     elseif cmd == 'disable' then
-        disenable(splitup,disable,'disable',true)
+        disenable(splitup, disable, 'disable', true)
     elseif cmd == 'reload' or cmd == 'r' then
         refresh_user_env()
     elseif strip(cmd) == 'debugmode' then
         _settings.debug_mode = not _settings.debug_mode
-        print('GearSwap: Debug Mode set to '..tostring(_settings.debug_mode)..'.')
+        print('GearSwap: Debug Mode set to ' .. tostring(_settings.debug_mode) .. '.')
     elseif strip(cmd) == 'demomode' then
         _settings.demo_mode = not _settings.demo_mode
-        print('GearSwap: Demo Mode set to '..tostring(_settings.demo_mode)..'.')
+        print('GearSwap: Demo Mode set to ' .. tostring(_settings.demo_mode) .. '.')
     elseif strip(cmd) == 'showswaps' then
         _settings.show_swaps = not _settings.show_swaps
-        print('GearSwap: Show Swaps set to '..tostring(_settings.show_swaps)..'.')
+        print('GearSwap: Show Swaps set to ' .. tostring(_settings.show_swaps) .. '.')
     elseif strip(cmd) == 'help' then
         print('GearSwap: Valid commands are:')
         print(' c <string>      : passes the string to the user\'s self_command function.')
@@ -231,12 +240,12 @@ windower.register_event('addon command',function (...)
         print(' validate <opts> : Checks your current inventory against your item collections (or vice versa).')
         print('  Please see the gearswap/README.md file for more details.')
     elseif _settings.debug_mode and strip(cmd) == 'eval' then
-        assert(loadstring(table.concat(splitup,' ')))()
+        assert(loadstring(table.concat(splitup, ' ')))()
     else
         local handled = false
         if not gearswap_disabled then
-            for i,v in ipairs(unhandled_command_events) do
-                handled = equip_sets(v,nil,cmd,unpack(splitup))
+            for i, v in ipairs(unhandled_command_events) do
+                handled = equip_sets(v, nil, cmd, unpack(splitup))
                 if handled then break end
             end
         end
@@ -246,18 +255,19 @@ windower.register_event('addon command',function (...)
     end
 end)
 
-function disenable(tab,funct,functname,pol)
+function disenable(tab, funct, functname, pol)
     local slot_name = ''
-    local ltab = L{}
-    for i,v in pairs(tab) do
-        ltab:append(v:gsub('[^%a_%d]',''):lower())
+    local ltab = L {}
+    for i, v in pairs(tab) do
+        ltab:append(v:gsub('[^%a_%d]', ''):lower())
     end
     if ltab:contains('all') then
-        funct('main','sub','range','ammo','head','neck','lear','rear','body','hands','lring','rring','back','waist','legs','feet')
-        print('GearSwap: All slots '..functname..'d.')
-    elseif ltab.n > 0  then
-        local found = L{}
-        local not_found = L{}
+        funct('main', 'sub', 'range', 'ammo', 'head', 'neck', 'lear', 'rear', 'body', 'hands', 'lring', 'rring', 'back',
+            'waist', 'legs', 'feet')
+        print('GearSwap: All slots ' .. functname .. 'd.')
+    elseif ltab.n > 0 then
+        local found = L {}
+        local not_found = L {}
         for slot_name in ltab:it() do
             if slot_map[slot_name] then
                 funct(slot_name)
@@ -267,35 +277,38 @@ function disenable(tab,funct,functname,pol)
             end
         end
         if found.n > 0 then
-            print('GearSwap: '..found:tostring()..' slot'..(found.n>1 and 's' or '')..' '..functname..'d.')
+            print('GearSwap: ' .. found:tostring() .. ' slot' .. (found.n > 1 and 's' or '') .. ' ' .. functname .. 'd.')
         end
         if not_found.n > 0 then
-            print('GearSwap: Unable to find slot'..(not_found.n>1 and 's' or '')..' '..not_found:tostring()..'.')
+            print('GearSwap: Unable to find slot' .. (not_found.n > 1 and 's' or '') .. ' ' .. not_found:tostring() ..
+            '.')
         end
     elseif gearswap_disabled ~= pol and not tab[2] then
-        print('GearSwap: User file '..functname..'d')
+        print('GearSwap: User file ' .. functname .. 'd')
         gearswap_disabled = pol
     end
 end
 
-function incoming_chunk(id,data,modified,injected,blocked)
-    windower.debug('incoming chunk '..id)
+function incoming_chunk(id, data, modified, injected, blocked)
+    -- windower.debug prints only under this flag, so the line is built only then.
+    if debugging.windower_debug then windower.debug('incoming chunk ' .. id) end
 
-    if next_packet_events and next_packet_events.sequence_id ~= data:unpack('H',3) then
-        if not next_packet_events.globals_update or next_packet_events.globals_update ~= data:unpack('H',3) then
+    if next_packet_events and next_packet_events.sequence_id ~= data:unpack('H', 3) then
+        if not next_packet_events.globals_update or next_packet_events.globals_update ~= data:unpack('H', 3) then
             refresh_globals()
-            next_packet_events.globals_update = data:unpack('H',3)
+            next_packet_events.globals_update = data:unpack('H', 3)
         end
         if next_packet_events.pet_status_change and not gearswap_disabled then
-            equip_sets('pet_status_change',nil,next_packet_events.pet_status_change.newstatus,next_packet_events.pet_status_change.oldstatus)
+            equip_sets('pet_status_change', nil, next_packet_events.pet_status_change.newstatus,
+                next_packet_events.pet_status_change.oldstatus)
             next_packet_events.pet_status_change = nil
         end
         if next_packet_events.pet_change then
             if next_packet_events.pet_change.pet and not gearswap_disabled then -- Losing a pet
-                equip_sets('pet_change',nil,next_packet_events.pet_change.pet,false)
+                equip_sets('pet_change', nil, next_packet_events.pet_change.pet, false)
                 next_packet_events.pet_change = nil
             elseif pet.isvalid and not gearswap_disabled then -- Gaining a pet
-                equip_sets('pet_change',nil,pet,true)
+                equip_sets('pet_change', nil, pet, true)
                 next_packet_events.pet_change = nil
             end
         end
@@ -305,31 +318,31 @@ function incoming_chunk(id,data,modified,injected,blocked)
     end
 
     if not injected and parse.i[id] then
-        parse.i[id](data,blocked)
+        parse.i[id](data, blocked)
     end
 end
 
-function outgoing_chunk(id,original,data,injected,blocked)
-    windower.debug('outgoing chunk '..id)
+function outgoing_chunk(id, original, data, injected, blocked)
+    if debugging.windower_debug then windower.debug('outgoing chunk ' .. id) end
 
     if not blocked and parse.o[id] then
-        parse.o[id](data,injected)
+        parse.o[id](data, injected)
     end
 end
 
-windower.register_event('incoming chunk',incoming_chunk)
-windower.register_event('outgoing chunk',outgoing_chunk)
+windower.register_event('incoming chunk', incoming_chunk)
+windower.register_event('outgoing chunk', outgoing_chunk)
 
-windower.register_event('status change',function(new,old)
-    windower.debug('status change '..new)
-    if gearswap_disabled or T{2,3,4}:contains(old) or T{2,3,4}:contains(new) then return end
+windower.register_event('status change', function(new, old)
+    windower.debug('status change ' .. new)
+    if gearswap_disabled or T { 2, 3, 4 }:contains(old) or T { 2, 3, 4 }:contains(new) then return end
 
     refresh_globals()
-    equip_sets('status_change',nil,res.statuses[new].english,res.statuses[old].english)
+    equip_sets('status_change', nil, res.statuses[new].english, res.statuses[old].english)
 end)
 
-windower.register_event('login',function(name)
-    windower.debug('login '..name)
+windower.register_event('login', function(name)
+    windower.debug('login ' .. name)
     initialize_globals()
-    windower.send_command('@wait 2;lua i '.._addon.name..' refresh_user_env;')
+    windower.send_command('@wait 2;lua i ' .. _addon.name .. ' refresh_user_env;')
 end)

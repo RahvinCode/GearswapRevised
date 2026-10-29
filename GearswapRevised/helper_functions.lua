@@ -201,6 +201,18 @@ function to_windower_api(str)
 end
 
 
+-- The three bag-name helpers below each return __raw.lower of the name with its
+-- spaces removed, kept here by name so a name is converted once.
+local bag_api_names = {}
+local function bag_api_name(str)
+    local name = bag_api_names[str]
+    if not name then
+        name = __raw.lower(str:gsub(' ',''))
+        bag_api_names[str] = name
+    end
+    return name
+end
+
 -----------------------------------------------------------------------------------
 ----Name: to_windower_bag_api(str)
 -- Takes strings and converts them to resources table key format
@@ -211,7 +223,7 @@ end
 -- a lower case string with ' ' replaced with ''
 -----------------------------------------------------------------------------------
 function to_windower_bag_api(str)
-    return __raw.lower(str:gsub(' ',''))
+    return bag_api_name(str)
 end
 
 -----------------------------------------------------------------------------------
@@ -224,7 +236,7 @@ end
 -- a lower case string with ' ' eliminated
 -----------------------------------------------------------------------------------
 function to_bag_api(str)
-    return __raw.lower(str:gsub(' ',''))
+    return bag_api_name(str)
 end
 
 -----------------------------------------------------------------------------------
@@ -237,7 +249,7 @@ end
 -- a lower case string with ' ' replaced with ''
 -----------------------------------------------------------------------------------
 function to_windower_compact(str)
-    return __raw.lower(str:gsub(' ',''))
+    return bag_api_name(str)
 end
 
 -----------------------------------------------------------------------------------
@@ -290,6 +302,18 @@ function get_default_slot(k)
 end
 
 
+-- Combines one cleaned set into baseSet for set_merge. If anything is blocked by
+-- having the slot disabled, assign the item to the not_sent_out_equip table.
+local function merge_clean_set(respect_disable, baseSet, set)
+    for slot,item in pairs(set) do
+        if respect_disable and disable_table[slot_map[slot]] then
+            not_sent_out_equip[slot] = item
+        else
+            baseSet[slot] = item
+        end
+    end
+end
+
 -----------------------------------------------------------------------------------
 ----Name: set_merge(baseSet, ...)
 -- Merges any additional gear sets (...) into the provided base set.
@@ -302,28 +326,30 @@ end
 -- Returns the modified base set, after all other sets have been merged into it.
 -----------------------------------------------------------------------------------
 function set_merge(respect_disable, baseSet, ...)
-    local combineSets = {...}
-
-    local canCombine = table.all(combineSets, function(t) return type(t) == 'table' end)
-    if not canCombine then
-        -- the code that called equip() or set_combine() is #3 on the stack from here
-        error("Trying to combine non-gear sets.", 3)
+    local count = select('#', ...)
+    for i = 1, count do
+        local set = select(i, ...)
+        if set ~= nil and type(set) ~= 'table' then
+            -- the code that called equip() or set_combine() is #3 on the stack from here
+            error("Trying to combine non-gear sets.", 3)
+        end
     end
 
     -- Take the list of tables we're given and cleans them up, so that they
-    -- only contain acceptable slot key entries.
-    local cleanSetsList = table.map(combineSets, unify_slots)
+    -- only contain acceptable slot key entries, every set before any is merged,
+    -- in argument order. One or two sets, the usual calls, need no list.
+    if count <= 2 then
+        local first, second = ...
+        if first ~= nil then first = unify_slots(first) end
+        if second ~= nil then second = unify_slots(second) end
+        if first ~= nil then merge_clean_set(respect_disable, baseSet, first) end
+        if second ~= nil then merge_clean_set(respect_disable, baseSet, second) end
+        return baseSet
+    end
 
-    -- Combine the provided sets into combinedSet.  If anything is blocked by having
-    -- the slot disabled, assign the item to the not_sent_out_equip table.
+    local cleanSetsList = table.map({...}, unify_slots)
     for _,set in pairs(cleanSetsList) do
-        for slot,item in pairs(set) do
-            if respect_disable and disable_table[slot_map[slot]] then
-                not_sent_out_equip[slot] = item
-            else
-                baseSet[slot] = item
-            end
-        end
+        merge_clean_set(respect_disable, baseSet, set)
     end
 
     return baseSet
@@ -966,7 +992,7 @@ function get_spell(act)
     end
 
     if act.category == 12 or act.category == 2 then
-        spell = copy_entry(resources_ranged_attack)
+        spell = copy_entry(res.ranged_attacks[0])
     else
         if not res.action_messages[msg_ID] or msg_ID == 31 then
             if act.category == 4 or act.category == 8 then
@@ -1092,6 +1118,30 @@ function spell_complete(rline)
         rline.mppaftercast = (player.mp - rline.mp_cost)/player.max_mp
     end
 
+    return rline
+end
+
+-----------------------------------------------------------------------------------
+--Name: find_monster_skill(abil)
+--Desc: Takes a monster ability name and finds the corresponding monster_skills
+--      resource line for the player's current species
+--Args:
+---- abil - ability name
+-----------------------------------------------------------------------------------
+--Returns:
+---- rline - resource line
+-----------------------------------------------------------------------------------
+function find_monster_skill(abil)
+    local rline = false
+    if player.species and player.species.tp_moves then
+        -- Iterates over currently available monster TP moves instead of using validabils
+        for i, v in pairs(player.species.tp_moves) do
+            if res.monster_skills[i][language]:lower() == abil then
+                rline = copy_entry(res.monster_skills[i])
+                break
+            end
+        end
+    end
     return rline
 end
 

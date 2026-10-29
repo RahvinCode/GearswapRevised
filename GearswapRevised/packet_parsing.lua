@@ -294,7 +294,13 @@ parse.i[0x050] = function (data)
     for chunk,ind in injected_equipment_registry[slot]:it() do
         if chunk == data:sub(5,7) then
             -- Matched
-            injected_equipment_registry[slot] = injected_equipment_registry[slot]:slice(ind+1) -- Eliminate current and all preceding packets if we get a match
+            if ind == injected_equipment_registry[slot].n then
+                -- The last entry matched, so the list empties in place (from Voli and Az,
+                -- GearswapRevised pull request 1).
+                injected_equipment_registry[slot]:clear()
+            else
+                injected_equipment_registry[slot] = injected_equipment_registry[slot]:slice(ind+1) -- Eliminate current and all preceding packets if we get a match
+            end
             return
         end
         --[[for i=9,9+4*(chunk:byte(5)-1),4 do -- The server replies to equipset packets with both single equip packets and equipset packets.
@@ -451,6 +457,19 @@ parse.i[0x062] = function (data)
     end
 end
 
+-- One metatable for every buff's details, its duration read live from its time.
+-- From Voli and Az's buff_mt (GearswapRevised pull request 1).
+local buff_details_mt = {__index=function(t,k)
+    if k and k=='duration' then
+        return rawget(t,'time')-os.time()+(vana_offset or 0)
+    else
+        return rawget(t,k)
+    end
+end}
+
+-- Gaining one of these ends every action in flight.
+local incapacitating_buffs = T{'terror','sleep','stun','petrification','charm','weakness','lullaby'}
+
 parse.i[0x063] = function (data)
     if data:byte(0x05) == 0x09 and blank_0x063_v9_inc then
         -- After zoning, players receive a blank 0x063 v9 packet
@@ -478,13 +497,7 @@ parse.i[0x063] = function (data)
                     time=t,
                     date=os.date('*t',t),
                     },
-                    {__index=function(t,k)
-                        if k and k=='duration' then
-                            return rawget(t,'time')-os.time()+(vana_offset or 0)
-                        else
-                            return rawget(t,k)
-                        end
-                    end})
+                    buff_details_mt)
             end
         end
         if seen_0x063_type9 then
@@ -493,7 +506,7 @@ parse.i[0x063] = function (data)
                 newbuffs[n].matched_exactly = nil
                 for i,old in pairs(_ExtraData.player.buff_details) do
                     -- Find unchanged buffs
-                    if old.id == new.id and math.abs(old.time-new.time) < 1 and not old.matched_exactly then
+                    if old.id == new.id and math.abs(old.time-new.time) < (old.duration < 6 and 4 or 1) and not old.matched_exactly then
                         newbuffs[n].matched_exactly = true
                         _ExtraData.player.buff_details[i].matched_exactly = true
                         break
@@ -538,7 +551,7 @@ parse.i[0x063] = function (data)
                     local buff_name = res.buffs[new.id][language]
                     windower.debug('gain buff '..buff_name..' ('..tostring(new.id)..')')
                     -- Need to figure out what I'm going to do with this:
-                    if T{'terror','sleep','stun','petrification','charm','weakness','lullaby'}:contains(buff_name:lower()) then
+                    if incapacitating_buffs:contains(buff_name:lower()) then
                         --Weakness is technically incorrect, because monsters can afflict players with weakness without killing them.
                         --However, it is being used to detect when players die so for the moment it must stay.
                         for ts,v in pairs(command_registry) do

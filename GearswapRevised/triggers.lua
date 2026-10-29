@@ -48,18 +48,26 @@ windower.register_event('outgoing text', function(original, modified)
             return ' ' .. str:gsub(' ', string.char(7)) .. ' '
         end):split(' '):filter(-'')
 
-    if splitline.n == 0 then
-        return
+    if not splitline[2] then
+        return modified
     end
 
     local command = splitline[1]
     local bstpet = (command == '/bstpet' and tonumber(splitline[2]))
     local unified_prefix = unify_prefix[command]
-    local abil, temp_mob_arr
+    if not unified_prefix then
+        return modified
+    end
 
-    if splitline[2] and not bstpet then
-        abil = splitline[2]:gsub(string.char(7), ' '):lower()
-    elseif splitline[2] and bstpet then
+    local abil, r_line
+    local r_name = res_prefix_map[unified_prefix]
+    local targ = splitline[3]
+    if unified_prefix == '/ra' then
+        storedcommand = command .. ' '
+        targ = splitline[2]
+        abil = res[r_name][0][language]:lower()
+    elseif bstpet then
+        storedcommand = command .. ' ' .. splitline[2]
         local pet_abilities = {}
         for _, v in ipairs(windower.ffxi.get_abilities().job_abilities) do
             if v >= bstpet_range.min and v <= bstpet_range.max then
@@ -67,17 +75,20 @@ windower.register_event('outgoing text', function(original, modified)
             end
         end
         if pet_abilities[tonumber(splitline[2])] then
-            abil = res.job_abilities[pet_abilities[tonumber(splitline[2])]].name:gsub(string.char(7), ' '):lower() -- .name, or .english?
+            abil = res[r_name][pet_abilities[tonumber(splitline[2])]].name:gsub(string.char(7), ' '):lower() -- .name, or .english?
         end
+    else
+        storedcommand = nil
+        abil = splitline[2]:gsub(string.char(7), ' '):lower()
     end
 
-    if validabils[language][unified_prefix] and validabils[language][unified_prefix][abil] then
-        temp_mob_arr = valid_target(splitline[3])
-    elseif validabils[language][unified_prefix] then
-        temp_mob_arr = valid_target(splitline[2])
+    local temp_mob_arr = valid_target(targ)
+    if not temp_mob_arr then
+        return modified
     end
 
-    if not (unified_prefix and temp_mob_arr and (validabils[language][unified_prefix][abil] or unified_prefix == '/ra')) then
+    local r_index = validabils[language][unified_prefix][abil]
+    if not r_index then
         return modified
     end
 
@@ -88,46 +99,18 @@ windower.register_event('outgoing text', function(original, modified)
 
     refresh_globals()
 
-    local r_line, find_monster_skill
-
-    function find_monster_skill(abil)
-        local line = false
-        if player.species and player.species.tp_moves then
-            -- Iterates over currently available monster TP moves instead of using validabils
-            for i, v in pairs(player.species.tp_moves) do
-                if res.monster_skills[i][language]:lower() == abil then
-                    line = copy_entry(res.monster_skills[i])
-                    break
-                end
-            end
-        end
-        return line
+    if unified_prefix == '/ms' then
+        r_line = find_monster_skill(abil)
+    else
+        r_line = copy_entry(res[r_name][r_index])
     end
 
-    if unified_prefix == '/ma' then
-        r_line = copy_entry(res.spells[validabils[language][unified_prefix][abil]])
-        storedcommand = command .. ' "' .. windower.to_shift_jis(r_line[language]) .. '" '
-    elseif unified_prefix == '/ms' and find_monster_skill(abil) then
-        r_line = find_monster_skill(abil)
-        storedcommand = command .. ' "' .. windower.to_shift_jis(r_line[language]) .. '" '
-    elseif unified_prefix == '/ws' then
-        r_line = copy_entry(res.weapon_skills[validabils[language][unified_prefix][abil]])
-        storedcommand = command .. ' "' .. windower.to_shift_jis(r_line[language]) .. '" '
-    elseif unified_prefix == '/ja' then
-        r_line = copy_entry(res.job_abilities[validabils[language][unified_prefix][abil]])
-        if bstpet then
-            storedcommand = command .. ' ' .. splitline[2]
-        else
-            storedcommand = command .. ' "' .. windower.to_shift_jis(r_line[language]) .. '" '
-        end
-    elseif unified_prefix == '/item' then
-        r_line = copy_entry(res.items[validabils[language][unified_prefix][abil]])
-        r_line.prefix = '/item'
+    if unified_prefix == '/item' then
         r_line.type = 'Item'
+    end
+
+    if not storedcommand then
         storedcommand = command .. ' "' .. windower.to_shift_jis(r_line[language]) .. '" '
-    elseif unified_prefix == '/ra' then
-        r_line = copy_entry(resources_ranged_attack)
-        storedcommand = command .. ' '
     end
 
     r_line.name = r_line[language]
@@ -135,7 +118,7 @@ windower.register_event('outgoing text', function(original, modified)
     spell.target = temp_mob_arr
     spell.action_type = action_type_map[command]
 
-    if spell.prefix == '/item' and spell.target.type ~= 'NONE' and bit.band(spell.target.spawn_type, 2) == 2 then
+    if spell.prefix == '/item' and spell.target.type ~= 'NONE' and bit.band(spell.target.spawn_type, 2) == 2 and find_inventory_item(spell.id) then
         spell.action_type = 'Trade'
     end
 
@@ -152,13 +135,10 @@ windower.register_event('outgoing text', function(original, modified)
 
         if spell.prefix == '/item' then
             -- Item use packet handling here
-            if spell.action_type == 'Trade' and find_inventory_item(spell.id) then
+            if spell.action_type == 'Trade' then
                 --0x36 packet
                 if spell.target.distance <= 6 then
                     command_registry[ts].proposed_packet = assemble_menu_item_packet(spell.target.id, spell.target.index, spell.id)
-                else
-                     windower.add_to_chat(67, 'Target out of range.')
-                     return true
                 end
             elseif find_usable_item(spell.id) then
                 --0x37 packet
@@ -168,10 +148,11 @@ windower.register_event('outgoing text', function(original, modified)
             command_registry[ts].proposed_packet = assemble_action_packet(spell.target.id, spell.target.index, outgoing_action_category_table[unify_prefix[spell.prefix]], spell.id, initialize_arrow_offset(spell.target))
         end
 
-        -- The packets created above should not be used.
         if command_registry[ts].proposed_packet then
             equip_sets('precast', ts, spell)
             return true
+        else
+            command_registry:delete_entry(ts)
         end
     end
 
@@ -191,8 +172,12 @@ end)
 ---- none
 -----------------------------------------------------------------------------------
 parse.i[0x028] = function (data)
-    local act = windower.packets.parse_action(data)
-    if gearswap_disabled or act.category == 1 then return end
+    -- Melee rounds, and actions by anyone but the player and the pet, return before the
+    -- packet is parsed. The category and the actor are read where libs/packets/fields.lua
+    -- and libs/actions.lua place them: the actor at byte 0x05, the category in bits 2-5
+    -- of byte 0x0A.
+    if gearswap_disabled or math.floor(data:byte(11)/4)%16 == 1 then return end
+    local actor_id = data:unpack('I',6)
 
 --    local spell_res = ActionPacket.new(act):get_spell()
 
@@ -205,10 +190,11 @@ parse.i[0x028] = function (data)
         end
     end
 
-    if act.actor_id ~= player.id and act.actor_id ~= pet_id then
+    if actor_id ~= player.id and actor_id ~= pet_id then
         return -- If the action is not being used by the player, the pet, or is a melee attack then abort processing.
     end
 
+    local act = windower.packets.parse_action(data)
     local prefix = ''
 
     if act.actor_id == pet_id then

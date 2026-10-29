@@ -184,6 +184,9 @@ function load_user_files(job_id,user_file)
 end
 
 
+-- The automaton keys refresh_player names from the item resources instead of copying.
+local automaton_part_keys = T{'available_heads','attachments','available_frames','available_attachments','frame','head'}
+
 -----------------------------------------------------------------------------------
 --Name: refresh_player()
 --Args:
@@ -263,7 +266,7 @@ function refresh_player(dt,user_event_flag)
 
             if auto_tab.name then
                 for i,v in pairs(auto_tab) do
-                    if not T{'available_heads','attachments','available_frames','available_attachments','frame','head'}:contains(i) then
+                    if not automaton_part_keys:contains(i) then
                         pet[i] = v
                     end
                 end
@@ -575,11 +578,24 @@ end
 ---- of that string present in the buff array. So two marches would give
 ---- buffarr.march==2.
 -----------------------------------------------------------------------------------
+-- Each buff's lowercased name by id, kept per language because GearSwap's
+-- string.lower depends on it (helper_functions.lua).
+local lower_buff_names = {}
+
 function convert_buff_list(bufflist)
     local buffarr = {}
+    local names = lower_buff_names[language]
+    if not names then
+        names = {}
+        lower_buff_names[language] = names
+    end
     for _,id in pairs(bufflist) do
         if res.buffs[id] then
-            local buff = res.buffs[id][language]:lower()
+            local buff = names[id]
+            if not buff then
+                buff = res.buffs[id][language]:lower()
+                names[id] = buff
+            end
             if buffarr[buff] then
                 buffarr[buff] = buffarr[buff] +1
             else
